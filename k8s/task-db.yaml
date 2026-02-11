@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task-db
+  template:
+    metadata:
+      labels:
+        app: task-db
+    spec:
+      containers:
+        - name: task-db
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: task_db
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: task-tracker-config
+                  key: TASK_DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-tracker-secrets
+                  key: TASK_DB_PASSWORD
+          volumeMounts:
+            - name: task-db-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: task-db-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-db
+spec:
+  selector:
+    app: task-db
+  ports:
+    - port: 5432
+      targetPort: 5432

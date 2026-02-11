@@ -1,0 +1,27 @@
+server:
+  port: ${CLIENT_PORT:8084}
+
+spring:
+  application:
+    name: client-service
+  datasource:
+    url: ${CLIENT_DB_URL:jdbc:postgresql://client-db:5432/client_db}
+    username: ${CLIENT_DB_USER:client}
+    password: ${CLIENT_DB_PASSWORD:client}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: ${JWT_SECRET:change-me}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

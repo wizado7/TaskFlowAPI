@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client-service
+  template:
+    metadata:
+      labels:
+        app: client-service
+    spec:
+      containers:
+        - name: client-service
+          image: client-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8084
+          env:
+            - name: CLIENT_DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: task-tracker-config
+                  key: CLIENT_DB_URL
+            - name: CLIENT_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: task-tracker-config
+                  key: CLIENT_DB_USER
+            - name: CLIENT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-tracker-secrets
+                  key: CLIENT_DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: task-tracker-secrets
+                  key: JWT_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-service
+spec:
+  selector:
+    app: client-service
+  ports:
+    - port: 8084
+      targetPort: 8084
+      name: http
+  type: ClusterIP

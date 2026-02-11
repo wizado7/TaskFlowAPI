@@ -1,0 +1,112 @@
+version: "3.9"
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - auth-service
+      - user-service
+      - task-service
+      - client-service
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_DB_URL=jdbc:postgresql://auth-db:5432/auth_db
+      - AUTH_DB_USER=auth
+      - AUTH_DB_PASSWORD=auth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - APP_BOOTSTRAP_ADMIN_EMAIL=${APP_BOOTSTRAP_ADMIN_EMAIL}
+      - APP_BOOTSTRAP_ADMIN_PASSWORD=${APP_BOOTSTRAP_ADMIN_PASSWORD}
+    depends_on:
+      - auth-db
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - USER_DB_URL=jdbc:postgresql://user-db:5432/user_db
+      - USER_DB_USER=user
+      - USER_DB_PASSWORD=user
+    depends_on:
+      - user-db
+
+  task-service:
+    build:
+      context: .
+      dockerfile: task-service/Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - TASK_DB_URL=jdbc:postgresql://task-db:5432/task_db
+      - TASK_DB_USER=task
+      - TASK_DB_PASSWORD=task
+    depends_on:
+      - task-db
+
+  client-service:
+    build:
+      context: .
+      dockerfile: client-service/Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - CLIENT_DB_URL=jdbc:postgresql://client-db:5432/client_db
+      - CLIENT_DB_USER=client
+      - CLIENT_DB_PASSWORD=client
+    depends_on:
+      - client-db
+
+  auth-db:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=auth_db
+      - POSTGRES_USER=auth
+      - POSTGRES_PASSWORD=auth
+    ports:
+      - "5433:5432"
+
+  user-db:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=user_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
+    ports:
+      - "5434:5432"
+
+  task-db:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=task_db
+      - POSTGRES_USER=task
+      - POSTGRES_PASSWORD=task
+    ports:
+      - "5435:5432"
+
+  client-db:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=client_db
+      - POSTGRES_USER=client
+      - POSTGRES_PASSWORD=client
+    ports:
+      - "5436:5432"

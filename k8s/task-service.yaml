@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task-service
+  template:
+    metadata:
+      labels:
+        app: task-service
+    spec:
+      containers:
+        - name: task-service
+          image: task-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+          env:
+            - name: TASK_DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: task-tracker-config
+                  key: TASK_DB_URL
+            - name: TASK_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: task-tracker-config
+                  key: TASK_DB_USER
+            - name: TASK_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-tracker-secrets
+                  key: TASK_DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: task-tracker-secrets
+                  key: JWT_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-service
+spec:
+  selector:
+    app: task-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+      name: http
+  type: ClusterIP

@@ -1,0 +1,40 @@
+server:
+  port: ${AUTH_PORT:8081}
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${AUTH_DB_URL:jdbc:postgresql://auth-db:5432/auth_db}
+    username: ${AUTH_DB_USER:auth}
+    password: ${AUTH_DB_PASSWORD:auth}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: ${JWT_SECRET:change-me}
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:replace-me}
+            client-secret: ${GOOGLE_CLIENT_SECRET:replace-me}
+            scope: openid,profile,email
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me}
+    issuer: task-tracker
+    expiration-minutes: ${JWT_EXP_MINUTES:60}
+    refresh-expiration-days: ${JWT_REFRESH_DAYS:14}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

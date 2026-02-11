@@ -1,0 +1,80 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: admin-user-service
+          uri: http://user-service:8082
+          predicates:
+            - Path=/api/v1/admin/users/**
+        - id: auth-service
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/admin/**
+        - id: auth-docs
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/auth-service/v3/api-docs/**
+          filters:
+            - RewritePath=/auth-service/(?<segment>.*), /${segment}
+        - id: user-service
+          uri: http://user-service:8082
+          predicates:
+            - Path=/api/v1/users/**,/api/v1/notifications/**
+        - id: user-docs
+          uri: http://user-service:8082
+          predicates:
+            - Path=/user-service/v3/api-docs/**
+          filters:
+            - RewritePath=/user-service/(?<segment>.*), /${segment}
+        - id: task-service
+          uri: http://task-service:8083
+          predicates:
+            - Path=/api/v1/tasks/**,/api/v1/projects/**,/api/v1/boards/**,/api/v1/columns/**
+        - id: task-docs
+          uri: http://task-service:8083
+          predicates:
+            - Path=/task-service/v3/api-docs/**
+          filters:
+            - RewritePath=/task-service/(?<segment>.*), /${segment}
+        - id: client-service
+          uri: http://client-service:8084
+          predicates:
+            - Path=/api/v1/clients/**
+        - id: client-docs
+          uri: http://client-service:8084
+          predicates:
+            - Path=/client-service/v3/api-docs/**
+          filters:
+            - RewritePath=/client-service/(?<segment>.*), /${segment}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: ${JWT_SECRET:change-me}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: auth-service
+        url: /auth-service/v3/api-docs
+      - name: user-service
+        url: /user-service/v3/api-docs
+      - name: task-service
+        url: /task-service/v3/api-docs
+      - name: client-service
+        url: /client-service/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
