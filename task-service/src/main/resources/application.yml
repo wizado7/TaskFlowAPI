@@ -14,11 +14,19 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 1000MB
   security:
     oauth2:
       resourceserver:
         jwt:
           secret-key: ${JWT_SECRET:change-me}
+
+app:
+  task-attachments:
+    dir: ${TASK_ATTACHMENTS_DIR:uploads/task-attachments}
 
 springdoc:
   api-docs:

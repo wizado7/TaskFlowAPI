@@ -44,7 +44,11 @@ public class Task {
     @Column(nullable = false)
     private TaskPriority priority = TaskPriority.MEDIUM;
 
-    private LocalDateTime deadline;
+    @Column(name = "start_date")
+    private LocalDateTime startDate;
+
+    @Column(name = "end_date")
+    private LocalDateTime endDate;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "task_assignees", joinColumns = @JoinColumn(name = "task_id"))

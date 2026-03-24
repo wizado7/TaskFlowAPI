@@ -107,7 +107,8 @@ public class TaskService {
         task.setDescription(request.description());
         task.setStatus(request.status());
         task.setPriority(request.priority());
-        task.setDeadline(request.deadline());
+        task.setStartDate(request.startDate());
+        task.setEndDate(request.endDate());
         task.getAssigneeEmails().clear();
         if (request.assigneeEmails() != null) {
             task.getAssigneeEmails().addAll(request.assigneeEmails());
@@ -191,7 +192,10 @@ public class TaskService {
         if (!Objects.equals(task.getPriority(), request.priority())) {
             return false;
         }
-        if (!Objects.equals(task.getDeadline(), request.deadline())) {
+        if (!Objects.equals(task.getStartDate(), request.startDate())) {
+            return false;
+        }
+        if (!Objects.equals(task.getEndDate(), request.endDate())) {
             return false;
         }
         if (!Objects.equals(task.getClientId(), request.clientId())) {
