@@ -3,6 +3,7 @@ package com.tasktracker.task.controller;
 import com.tasktracker.task.dto.TaskCommentRequest;
 import com.tasktracker.task.dto.TaskCommentResponse;
 import com.tasktracker.task.dto.TaskAttachmentResponse;
+import com.tasktracker.task.dto.TaskEstimateRequest;
 import com.tasktracker.task.dto.TaskRequest;
 import com.tasktracker.task.dto.TaskResponse;
 import com.tasktracker.task.service.TaskAttachmentService;
@@ -76,6 +77,20 @@ public class TaskController {
                                                       @AuthenticationPrincipal Jwt jwt) {
         var tasks = service.listBacklog(boardId, jwt.getSubject()).stream().map(this::toResponse).toList();
         return ResponseEntity.ok(tasks);
+    }
+
+    @GetMapping("/sprints/{sprintId}")
+    public ResponseEntity<List<TaskResponse>> sprintTasks(@PathVariable("sprintId") UUID sprintId,
+                                                          @AuthenticationPrincipal Jwt jwt) {
+        var tasks = service.listSprintTasks(sprintId, jwt.getSubject()).stream().map(this::toResponse).toList();
+        return ResponseEntity.ok(tasks);
+    }
+
+    @PutMapping("/{id}/estimate")
+    public ResponseEntity<TaskResponse> estimate(@PathVariable("id") UUID id,
+                                                 @AuthenticationPrincipal Jwt jwt,
+                                                 @Valid @RequestBody TaskEstimateRequest request) {
+        return ResponseEntity.ok(toResponse(service.estimate(id, request.storyPoints(), jwt.getSubject())));
     }
 
     @DeleteMapping("/{id}")
@@ -175,6 +190,7 @@ public class TaskController {
                 task.getBoardId(),
                 task.getColumnId(),
                 task.getSprintId(),
+                task.getStoryPoints(),
                 task.isBacklog()
         );
     }

@@ -6,6 +6,7 @@ import com.tasktracker.task.dto.BoardMemberResponse;
 import com.tasktracker.task.dto.BoardRequest;
 import com.tasktracker.task.dto.BoardResponse;
 import com.tasktracker.task.dto.BoardUpdateRequest;
+import com.tasktracker.task.dto.SprintCompleteRequest;
 import com.tasktracker.task.dto.SprintRequest;
 import com.tasktracker.task.dto.SprintResponse;
 import com.tasktracker.task.entity.BoardType;
@@ -13,6 +14,7 @@ import com.tasktracker.task.service.BoardInviteService;
 import com.tasktracker.task.service.BoardMemberService;
 import com.tasktracker.task.service.BoardService;
 import com.tasktracker.task.service.SprintService;
+import com.tasktracker.task.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,15 +40,18 @@ public class BoardController {
     private final SprintService sprintService;
     private final BoardInviteService inviteService;
     private final BoardMemberService memberService;
+    private final TaskService taskService;
 
     public BoardController(BoardService boardService,
                            SprintService sprintService,
                            BoardInviteService inviteService,
-                           BoardMemberService memberService) {
+                           BoardMemberService memberService,
+                           TaskService taskService) {
         this.boardService = boardService;
         this.sprintService = sprintService;
         this.inviteService = inviteService;
         this.memberService = memberService;
+        this.taskService = taskService;
     }
 
     @PostMapping
@@ -81,8 +86,9 @@ public class BoardController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@AuthenticationPrincipal Jwt jwt,
-                                       @PathVariable("id") UUID id) {
-        boardService.delete(id, jwt.getSubject());
+                                       @PathVariable("id") UUID id,
+                                       @RequestParam(value = "targetBoardId", required = false) UUID targetBoardId) {
+        boardService.delete(id, targetBoardId, jwt.getSubject());
         return ResponseEntity.noContent().build();
     }
 
@@ -91,7 +97,14 @@ public class BoardController {
     public ResponseEntity<SprintResponse> createSprint(@PathVariable("id") UUID boardId,
                                                        @AuthenticationPrincipal Jwt jwt,
                                                        @Valid @RequestBody SprintRequest request) {
-        var sprint = sprintService.create(new SprintRequest(boardId, request.name(), request.startDate(), request.endDate(), request.active()),
+        var sprint = sprintService.create(new SprintRequest(
+                        boardId,
+                        request.name(),
+                        request.startDate(),
+                        request.endDate(),
+                        request.goal(),
+                        request.capacityPoints(),
+                        request.active()),
                 jwt.getSubject());
         return ResponseEntity.ok(toResponse(sprint));
     }
@@ -101,6 +114,42 @@ public class BoardController {
                                                             @AuthenticationPrincipal Jwt jwt) {
         var sprints = sprintService.list(boardId, jwt.getSubject()).stream().map(this::toResponse).toList();
         return ResponseEntity.ok(sprints);
+    }
+
+    @GetMapping("/{id}/sprints/active")
+    public ResponseEntity<SprintResponse> activeSprint(@PathVariable("id") UUID boardId,
+                                                       @AuthenticationPrincipal Jwt jwt) {
+        return sprintService.active(boardId, jwt.getSubject())
+                .map(sprint -> ResponseEntity.ok(toResponse(sprint)))
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @PostMapping("/sprints/{sprintId}/start")
+    public ResponseEntity<SprintResponse> startSprint(@PathVariable("sprintId") UUID sprintId,
+                                                      @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(toResponse(sprintService.start(sprintId, jwt.getSubject())));
+    }
+
+    @PostMapping("/sprints/{sprintId}/complete")
+    public ResponseEntity<SprintResponse> completeSprint(@PathVariable("sprintId") UUID sprintId,
+                                                         @AuthenticationPrincipal Jwt jwt,
+                                                         @RequestBody(required = false) SprintCompleteRequest request) {
+        UUID targetBoardId = request != null ? request.targetBoardId() : null;
+        return ResponseEntity.ok(toResponse(sprintService.complete(sprintId, targetBoardId, jwt.getSubject())));
+    }
+
+    @PostMapping("/sprints/{sprintId}/tasks/{taskId}")
+    public ResponseEntity<com.tasktracker.task.dto.TaskResponse> addTaskToSprint(@PathVariable("sprintId") UUID sprintId,
+                                                                                 @PathVariable("taskId") UUID taskId,
+                                                                                 @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(toTaskResponse(taskService.addToSprint(sprintId, taskId, jwt.getSubject())));
+    }
+
+    @DeleteMapping("/sprints/{sprintId}/tasks/{taskId}")
+    public ResponseEntity<com.tasktracker.task.dto.TaskResponse> removeTaskFromSprint(@PathVariable("sprintId") UUID sprintId,
+                                                                                      @PathVariable("taskId") UUID taskId,
+                                                                                      @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(toTaskResponse(taskService.removeFromSprint(sprintId, taskId, jwt.getSubject())));
     }
 
     @PostMapping("/{id}/invites")
@@ -148,11 +197,51 @@ public class BoardController {
     }
 
     private BoardResponse toResponse(com.tasktracker.task.entity.Board board) {
-        return new BoardResponse(board.getId(), board.getProjectId(), board.getName(), board.getCreatedBy(), board.getType());
+        return new BoardResponse(
+                board.getId(),
+                board.getProjectId(),
+                board.getName(),
+                board.getCreatedBy(),
+                board.getType(),
+                board.getMethodology()
+        );
     }
 
     private SprintResponse toResponse(com.tasktracker.task.entity.Sprint sprint) {
-        return new SprintResponse(sprint.getId(), sprint.getBoardId(), sprint.getName(), sprint.getStartDate(), sprint.getEndDate(), sprint.isActive());
+        return new SprintResponse(
+                sprint.getId(),
+                sprint.getBoardId(),
+                sprint.getName(),
+                sprint.getStartDate(),
+                sprint.getEndDate(),
+                sprint.isActive(),
+                sprint.getGoal(),
+                sprint.getCapacityPoints(),
+                sprint.getStatus(),
+                sprint.getCompletedAt(),
+                taskService.plannedPoints(sprint.getId()),
+                taskService.completedPoints(sprint.getId())
+        );
+    }
+
+    private com.tasktracker.task.dto.TaskResponse toTaskResponse(com.tasktracker.task.entity.Task task) {
+        return new com.tasktracker.task.dto.TaskResponse(
+                task.getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getStartDate(),
+                task.getEndDate(),
+                task.getAssigneeEmails().stream().toList(),
+                task.getClientId(),
+                task.getProjectId(),
+                task.getBoardId(),
+                task.getColumnId(),
+                task.getSprintId(),
+                task.getStoryPoints(),
+                task.isBacklog()
+        );
     }
 
     private BoardInviteResponse toResponse(com.tasktracker.task.entity.BoardInvite invite) {

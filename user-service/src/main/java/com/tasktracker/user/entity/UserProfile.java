@@ -28,5 +28,10 @@ public class UserProfile {
     private String fullName;
     private String phone;
     private String timezone;
-    private String avatarUrl;
+
+    @Column(name = "avatar_file_name")
+    private String avatarFileName;
+
+    @Column(name = "avatar_content_type")
+    private String avatarContentType;
 }

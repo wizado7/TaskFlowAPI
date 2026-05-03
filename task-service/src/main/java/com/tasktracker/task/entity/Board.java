@@ -34,6 +34,10 @@ public class Board {
     @Column(name = "board_type", nullable = false)
     private BoardType type;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "board_methodology", nullable = false)
+    private BoardMethodology methodology = BoardMethodology.KANBAN;
+
     @Column(name = "created_by", nullable = false)
     private String createdBy;
 }

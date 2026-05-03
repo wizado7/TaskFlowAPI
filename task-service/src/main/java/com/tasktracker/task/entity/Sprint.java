@@ -2,6 +2,8 @@ package com.tasktracker.task.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -10,6 +12,7 @@ import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -35,4 +38,16 @@ public class Sprint {
 
     @Column(nullable = false)
     private boolean active = false;
+
+    private String goal;
+
+    @Column(name = "capacity_points")
+    private Integer capacityPoints;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SprintStatus status = SprintStatus.PLANNED;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 }

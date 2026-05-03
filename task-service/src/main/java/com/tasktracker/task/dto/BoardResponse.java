@@ -1,5 +1,6 @@
 package com.tasktracker.task.dto;
 
+import com.tasktracker.task.entity.BoardMethodology;
 import com.tasktracker.task.entity.BoardType;
 
 import java.util.UUID;
@@ -9,5 +10,6 @@ public record BoardResponse(
         UUID projectId,
         String name,
         String createdBy,
-        BoardType type
+        BoardType type,
+        BoardMethodology methodology
 ) {}

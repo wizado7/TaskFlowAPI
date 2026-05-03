@@ -22,14 +22,14 @@ public class InternalUserController {
 
     @PostMapping("/provision")
     public ResponseEntity<UserProfileResponse> provision(@Valid @RequestBody UserProvisionRequest request) {
-        var profile = service.getOrCreateByEmail(request.email());
+        var profile = service.getOrCreateByEmail(request.email(), request.fullName());
         return ResponseEntity.ok(new UserProfileResponse(
                 profile.getId(),
                 profile.getUserEmail(),
                 profile.getFullName(),
                 profile.getPhone(),
                 profile.getTimezone(),
-                profile.getAvatarUrl()
+                profile.getAvatarFileName() == null ? null : "/api/v1/users/" + profile.getId() + "/avatar"
         ));
     }
 }

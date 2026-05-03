@@ -53,7 +53,7 @@ public class AdminUserController {
                 profile.getFullName(),
                 profile.getPhone(),
                 profile.getTimezone(),
-                profile.getAvatarUrl()
+                profile.getAvatarFileName() == null ? null : "/api/v1/users/" + profile.getId() + "/avatar"
         );
     }
 }

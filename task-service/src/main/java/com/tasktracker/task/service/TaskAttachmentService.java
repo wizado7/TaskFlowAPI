@@ -1,7 +1,12 @@
 package com.tasktracker.task.service;
 
 import com.tasktracker.task.entity.TaskAttachment;
+import com.tasktracker.task.entity.Task;
 import com.tasktracker.task.exception.AppException;
+import com.tasktracker.task.realtime.RealtimeAction;
+import com.tasktracker.task.realtime.RealtimeResource;
+import com.tasktracker.task.realtime.TaskRealtimeEvent;
+import com.tasktracker.task.realtime.TaskRealtimePublisher;
 import com.tasktracker.task.repository.TaskAttachmentRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -26,13 +31,16 @@ public class TaskAttachmentService {
 
     private final TaskAttachmentRepository repository;
     private final TaskService taskService;
+    private final TaskRealtimePublisher realtimePublisher;
     private final Path storageDir;
 
     public TaskAttachmentService(TaskAttachmentRepository repository,
                                  TaskService taskService,
+                                 TaskRealtimePublisher realtimePublisher,
                                  @Value("${app.task-attachments.dir:uploads/task-attachments}") String storageDir) {
         this.repository = repository;
         this.taskService = taskService;
+        this.realtimePublisher = realtimePublisher;
         this.storageDir = Path.of(storageDir).toAbsolutePath().normalize();
         try {
             Files.createDirectories(this.storageDir);
@@ -42,7 +50,7 @@ public class TaskAttachmentService {
     }
 
     public TaskAttachment upload(UUID taskId, String uploaderEmail, MultipartFile file) {
-        taskService.get(taskId, uploaderEmail);
+        Task task = taskService.get(taskId, uploaderEmail);
 
         if (file == null || file.isEmpty()) {
             throw new AppException("File is required", HttpStatus.BAD_REQUEST);
@@ -73,7 +81,9 @@ public class TaskAttachmentService {
         attachment.setStoredFileName(storedFileName);
         attachment.setContentType(file.getContentType());
         attachment.setSizeBytes(file.getSize());
-        return repository.save(attachment);
+        TaskAttachment saved = repository.save(attachment);
+        publish(task, saved.getId(), RealtimeAction.CREATED, uploaderEmail);
+        return saved;
     }
 
     public List<TaskAttachment> list(UUID taskId, String requesterEmail) {
@@ -104,7 +114,7 @@ public class TaskAttachmentService {
     }
 
     public void delete(UUID taskId, UUID attachmentId, String requesterEmail) {
-        taskService.get(taskId, requesterEmail);
+        Task task = taskService.get(taskId, requesterEmail);
         TaskAttachment attachment = repository.findById(attachmentId)
                 .orElseThrow(() -> new AppException("Attachment not found", HttpStatus.NOT_FOUND));
         if (!attachment.getTaskId().equals(taskId)) {
@@ -121,6 +131,19 @@ public class TaskAttachmentService {
             throw new AppException("Failed to delete attachment file", HttpStatus.INTERNAL_SERVER_ERROR);
         }
         repository.delete(attachment);
+        publish(task, attachmentId, RealtimeAction.DELETED, requesterEmail);
+    }
+
+    private void publish(Task task, UUID attachmentId, RealtimeAction action, String actorEmail) {
+        realtimePublisher.publish(TaskRealtimeEvent.of(
+                RealtimeResource.ATTACHMENT,
+                action,
+                task.getProjectId(),
+                task.getBoardId(),
+                task.getId(),
+                attachmentId,
+                actorEmail
+        ));
     }
 
     private String safeFileName(String originalFileName) {

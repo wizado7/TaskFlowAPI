@@ -9,7 +9,9 @@ import java.util.UUID;
 
 public interface BoardRepository extends JpaRepository<Board, UUID> {
     List<Board> findByProjectId(UUID projectId);
+    List<Board> findByProjectIdAndIdNot(UUID projectId, UUID id);
     List<Board> findByProjectIdAndType(UUID projectId, BoardType type);
+    boolean existsByProjectIdAndType(UUID projectId, BoardType type);
     List<Board> findByProjectIdAndIdIn(UUID projectId, List<UUID> ids);
     List<Board> findByProjectIdAndTypeAndIdIn(UUID projectId, BoardType type, List<UUID> ids);
     List<Board> findByProjectIdIn(List<UUID> projectIds);

@@ -45,7 +45,7 @@ public class UserAccountService {
         user.setProvider(AuthProvider.LOCAL);
         user.getRoles().add(Role.USER);
         UserAccount saved = repository.save(user);
-        profileProvisioner.provision(saved.getEmail());
+        profileProvisioner.provision(saved.getEmail(), request.fullName());
         return saved;
     }
 
@@ -72,7 +72,7 @@ public class UserAccountService {
         admin.getRoles().add(Role.ADMIN);
         admin.getRoles().add(Role.USER);
         UserAccount saved = repository.save(admin);
-        profileProvisioner.provision(saved.getEmail());
+        profileProvisioner.provision(saved.getEmail(), request.email());
         return saved;
     }
 

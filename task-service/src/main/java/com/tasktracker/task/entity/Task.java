@@ -69,6 +69,9 @@ public class Task {
     @Column(name = "sprint_id")
     private UUID sprintId;
 
+    @Column(name = "story_points")
+    private Integer storyPoints;
+
     @Column(name = "backlog", nullable = false)
     private boolean backlog = false;
 }

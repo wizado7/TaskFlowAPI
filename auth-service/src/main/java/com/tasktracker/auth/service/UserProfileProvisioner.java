@@ -23,9 +23,16 @@ public class UserProfileProvisioner {
     }
 
     public void provision(String email) {
+        provision(email, null);
+    }
+
+    public void provision(String email, String fullName) {
         try {
             String url = userServiceUrl + "/api/v1/internal/users/provision";
-            restTemplate.postForEntity(url, Map.of("email", email), Void.class);
+            Map<String, String> body = fullName == null || fullName.isBlank()
+                    ? Map.of("email", email)
+                    : Map.of("email", email, "fullName", fullName);
+            restTemplate.postForEntity(url, body, Void.class);
         } catch (Exception ex) {
             log.warn("Failed to provision user profile for {}: {}", email, ex.getMessage());
         }

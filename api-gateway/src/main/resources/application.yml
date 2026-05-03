@@ -7,6 +7,14 @@ spring:
   cloud:
     gateway:
       routes:
+        - id: task-events-websocket
+          uri: ws://task-service:8083
+          predicates:
+            - Path=/ws/task-events
+        - id: auth-oauth2
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/oauth2/**,/login/oauth2/**
         - id: admin-user-service
           uri: http://user-service:8082
           predicates:

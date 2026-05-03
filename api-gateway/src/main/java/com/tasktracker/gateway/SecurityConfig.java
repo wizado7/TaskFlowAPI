@@ -26,7 +26,9 @@ public class SecurityConfig {
                         "/auth-service/v3/api-docs/**",
                         "/user-service/v3/api-docs/**",
                         "/task-service/v3/api-docs/**",
-                        "/client-service/v3/api-docs/**"
+                        "/client-service/v3/api-docs/**",
+                        "/ws/task-events",
+                        "/api/v1/users/*/avatar"
                     ).permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .pathMatchers("/oauth2/**", "/login/**").permitAll()

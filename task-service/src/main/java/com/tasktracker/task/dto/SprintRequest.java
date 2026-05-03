@@ -11,5 +11,7 @@ public record SprintRequest(
         @NotBlank String name,
         LocalDate startDate,
         LocalDate endDate,
+        String goal,
+        Integer capacityPoints,
         Boolean active
 ) {}

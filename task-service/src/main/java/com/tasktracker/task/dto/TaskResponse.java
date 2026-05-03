@@ -21,5 +21,6 @@ public record TaskResponse(
         UUID boardId,
         UUID columnId,
         UUID sprintId,
+        Integer storyPoints,
         boolean backlog
 ) {}
