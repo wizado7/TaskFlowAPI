@@ -91,6 +91,17 @@ public class TaskAttachmentService {
         return repository.findByTaskIdOrderByCreatedAtAsc(taskId);
     }
 
+    public List<TaskAttachment> listProjectAttachments(UUID projectId, String requesterEmail) {
+        List<UUID> visibleTaskIds = taskService.listVisible(requesterEmail).stream()
+                .filter(task -> projectId.equals(task.getProjectId()))
+                .map(Task::getId)
+                .toList();
+        if (visibleTaskIds.isEmpty()) {
+            return List.of();
+        }
+        return repository.findByTaskIdInOrderByCreatedAtDesc(visibleTaskIds);
+    }
+
     public AttachmentDownload download(UUID taskId, UUID attachmentId, String requesterEmail) {
         taskService.get(taskId, requesterEmail);
         TaskAttachment attachment = repository.findById(attachmentId)

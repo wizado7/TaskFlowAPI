@@ -147,6 +147,16 @@ public class TaskController {
         return ResponseEntity.ok(attachments);
     }
 
+    @GetMapping("/projects/{projectId}/attachments")
+    public ResponseEntity<List<TaskAttachmentResponse>> listProjectAttachments(@PathVariable("projectId") UUID projectId,
+                                                                               @AuthenticationPrincipal Jwt jwt) {
+        var attachments = attachmentService.listProjectAttachments(projectId, jwt.getSubject())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        return ResponseEntity.ok(attachments);
+    }
+
     @GetMapping("/{id}/attachments/{attachmentId}/download")
     public ResponseEntity<Resource> downloadAttachment(@PathVariable("id") UUID id,
                                                        @PathVariable("attachmentId") UUID attachmentId,

@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface TaskAttachmentRepository extends JpaRepository<TaskAttachment, UUID> {
     List<TaskAttachment> findByTaskIdOrderByCreatedAtAsc(UUID taskId);
+    List<TaskAttachment> findByTaskIdInOrderByCreatedAtDesc(List<UUID> taskIds);
 }

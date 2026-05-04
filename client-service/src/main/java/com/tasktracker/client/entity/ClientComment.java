@@ -2,45 +2,38 @@ package com.tasktracker.client.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "clients")
+@Table(name = "client_comments")
 @Getter
 @Setter
-public class Client {
+public class ClientComment {
 
     @Id
     @GeneratedValue
     @UuidGenerator
     private UUID id;
 
-    @Column(name = "project_id")
-    private UUID projectId;
+    @Column(nullable = false)
+    private UUID clientId;
 
     @Column(nullable = false)
-    private String name;
+    private String authorEmail;
 
-    private String email;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String message;
 
-    private String phone;
-
-    private String company;
-
-    private String notes;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private CrmStage stage = CrmStage.LEAD;
-
-    private String createdBy;
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
 }

@@ -126,10 +126,10 @@ public class TaskService {
         Task task = repository.findById(id)
                 .orElseThrow(() -> new AppException("Task not found", HttpStatus.NOT_FOUND));
         UUID projectId = resolveProjectId(task);
-        if (projectId == null || !isProjectOwner(projectId, requesterEmail)) {
-            throw new AppException("Only project owner can delete tasks", HttpStatus.FORBIDDEN);
-        }
         UUID boardId = task.getBoardId();
+        if (!canDeleteTask(projectId, boardId, requesterEmail)) {
+            throw new AppException("Only board creator, board editor, board owner, or project owner can delete tasks", HttpStatus.FORBIDDEN);
+        }
         UUID taskId = task.getId();
         repository.deleteById(task.getId());
         realtimePublisher.publish(TaskRealtimeEvent.of(
@@ -141,6 +141,23 @@ public class TaskService {
                 taskId,
                 requesterEmail
         ));
+    }
+
+    private boolean canDeleteTask(UUID projectId, UUID boardId, String requesterEmail) {
+        if (projectId != null && isProjectOwner(projectId, requesterEmail)) {
+            return true;
+        }
+        if (boardId == null) {
+            return false;
+        }
+        var board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new AppException("Board not found", HttpStatus.NOT_FOUND));
+        if (board.getCreatedBy().equalsIgnoreCase(requesterEmail)) {
+            return true;
+        }
+        return boardMemberRepository.findByBoardIdAndUserEmail(boardId, requesterEmail)
+                .map(member -> member.getRole() == BoardRole.OWNER || member.getRole() == BoardRole.EDITOR)
+                .orElse(false);
     }
 
     public List<Task> listBacklog(UUID boardId, String requesterEmail) {
