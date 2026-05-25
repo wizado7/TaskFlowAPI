@@ -5,7 +5,7 @@ COPY task-service/pom.xml /app/task-service/pom.xml
 COPY task-service/src /app/task-service/src
 RUN mvn -f /app/task-service/pom.xml -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --home-dir /app app
 COPY --from=build /app/task-service/target/task-service*.jar /app/task-service.jar
