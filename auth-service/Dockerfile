@@ -5,7 +5,7 @@ COPY auth-service/pom.xml /app/auth-service/pom.xml
 COPY auth-service/src /app/auth-service/src
 RUN mvn -f /app/auth-service/pom.xml -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --home-dir /app app
 COPY --from=build /app/auth-service/target/auth-service*.jar /app/auth-service.jar
