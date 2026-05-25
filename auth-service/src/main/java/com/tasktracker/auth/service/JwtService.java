@@ -1,6 +1,7 @@
 package com.tasktracker.auth.service;
 
 import com.tasktracker.auth.entity.Role;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +40,7 @@ public class JwtService {
                 .claim("roles", roles.stream().map(Enum::name).toList())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(exp))
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
                 .compact();
     }
 
