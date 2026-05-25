@@ -5,7 +5,7 @@ COPY api-gateway/pom.xml /app/api-gateway/pom.xml
 COPY api-gateway/src /app/api-gateway/src
 RUN mvn -f /app/api-gateway/pom.xml -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --home-dir /app app
 COPY --from=build /app/api-gateway/target/api-gateway*.jar /app/api-gateway.jar
