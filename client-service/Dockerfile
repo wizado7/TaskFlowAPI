@@ -1,4 +1,4 @@
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+FROM maven:3.9.15-eclipse-temurin-26 AS build
 WORKDIR /app
 COPY pom.xml /app/pom.xml
 COPY client-service/pom.xml /app/client-service/pom.xml
