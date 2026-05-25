@@ -1,0 +1,52 @@
+name: Branch policy
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate-promotion-flow:
+    name: Validate promotion flow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check source and target branches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base="${{ github.base_ref }}"
+          head="${{ github.head_ref }}"
+
+          case "${base}" in
+            develop)
+              if [[ "${head}" =~ ^(feature|fix|chore|docs|refactor|test|infra|dependabot)/ ]] || [[ "${head}" =~ ^hotfix/ ]]; then
+                exit 0
+              fi
+              echo "::error::Pull requests into develop must come from feature/*, fix/*, chore/*, docs/*, refactor/*, test/*, infra/*, dependabot/* or hotfix/* branches"
+              exit 1
+              ;;
+            staging)
+              if [[ "${head}" == "develop" ]] || [[ "${head}" =~ ^(release|hotfix)/ ]]; then
+                exit 0
+              fi
+              echo "::error::Pull requests into staging must come from develop, release/* or hotfix/* branches"
+              exit 1
+              ;;
+            main)
+              if [[ "${head}" == "staging" ]] || [[ "${head}" =~ ^hotfix/ ]]; then
+                exit 0
+              fi
+              echo "::error::Pull requests into main must come from staging or hotfix/* branches"
+              exit 1
+              ;;
+            *)
+              echo "::error::Unsupported base branch '${base}'"
+              exit 1
+              ;;
+          esac
