@@ -1,13 +1,13 @@
-version: "3.9"
-
 services:
   api-gateway:
     build:
       context: .
       dockerfile: api-gateway/Dockerfile
     ports:
-      - "8080:8080"
+      - "${GATEWAY_PORT:-8080}:${GATEWAY_PORT:-8080}"
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - GATEWAY_PORT=${GATEWAY_PORT:-8080}
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - auth-service
@@ -20,16 +20,26 @@ services:
       context: .
       dockerfile: auth-service/Dockerfile
     ports:
-      - "8081:8081"
+      - "${AUTH_PORT:-8081}:${AUTH_PORT:-8081}"
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - AUTH_PORT=${AUTH_PORT:-8081}
       - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
       - AUTH_DB_URL=jdbc:postgresql://auth-db:5432/auth_db
-      - AUTH_DB_USER=auth
-      - AUTH_DB_PASSWORD=auth
+      - AUTH_DB_USER=${AUTH_DB_USER:-auth}
+      - AUTH_DB_PASSWORD=${AUTH_DB_PASSWORD:-auth}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
       - FRONTEND_OAUTH_SUCCESS_URL=${FRONTEND_OAUTH_SUCCESS_URL}
+      - JWT_EXP_MINUTES=${JWT_EXP_MINUTES:-60}
+      - JWT_REFRESH_DAYS=${JWT_REFRESH_DAYS:-14}
+      - PUBLIC_REGISTRATION_ENABLED=${PUBLIC_REGISTRATION_ENABLED:-true}
+      - AUTH_RATE_LIMIT_ENABLED=${AUTH_RATE_LIMIT_ENABLED:-true}
+      - AUTH_RATE_LIMIT_MAX_ATTEMPTS=${AUTH_RATE_LIMIT_MAX_ATTEMPTS:-60}
+      - AUTH_RATE_LIMIT_WINDOW_SECONDS=${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
+      - AUTH_RATE_LIMIT_BLOCK_SECONDS=${AUTH_RATE_LIMIT_BLOCK_SECONDS:-300}
       - APP_BOOTSTRAP_ADMIN_EMAIL=${APP_BOOTSTRAP_ADMIN_EMAIL}
       - APP_BOOTSTRAP_ADMIN_PASSWORD=${APP_BOOTSTRAP_ADMIN_PASSWORD}
     depends_on:
@@ -40,12 +50,16 @@ services:
       context: .
       dockerfile: user-service/Dockerfile
     ports:
-      - "8082:8082"
+      - "${USER_PORT:-8082}:${USER_PORT:-8082}"
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - USER_PORT=${USER_PORT:-8082}
       - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
       - USER_DB_URL=jdbc:postgresql://user-db:5432/user_db
-      - USER_DB_USER=user
-      - USER_DB_PASSWORD=user
+      - USER_DB_USER=${USER_DB_USER:-user}
+      - USER_DB_PASSWORD=${USER_DB_PASSWORD:-user}
+      - USER_AVATARS_DIR=${USER_AVATARS_DIR:-uploads/user-avatars}
     depends_on:
       - user-db
 
@@ -54,12 +68,18 @@ services:
       context: .
       dockerfile: task-service/Dockerfile
     ports:
-      - "8083:8083"
+      - "${TASK_PORT:-8083}:${TASK_PORT:-8083}"
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - TASK_PORT=${TASK_PORT:-8083}
       - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
       - TASK_DB_URL=jdbc:postgresql://task-db:5432/task_db
-      - TASK_DB_USER=task
-      - TASK_DB_PASSWORD=task
+      - TASK_DB_USER=${TASK_DB_USER:-task}
+      - TASK_DB_PASSWORD=${TASK_DB_PASSWORD:-task}
+      - USER_SERVICE_URL=${USER_SERVICE_URL:-http://user-service:8082}
+      - WEBSOCKET_ALLOWED_ORIGIN_PATTERNS=${WEBSOCKET_ALLOWED_ORIGIN_PATTERNS:-http://localhost:3000,http://localhost:5173}
+      - TASK_ATTACHMENTS_DIR=${TASK_ATTACHMENTS_DIR:-uploads/task-attachments}
     depends_on:
       - task-db
 
@@ -68,12 +88,16 @@ services:
       context: .
       dockerfile: client-service/Dockerfile
     ports:
-      - "8084:8084"
+      - "${CLIENT_PORT:-8084}:${CLIENT_PORT:-8084}"
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - CLIENT_PORT=${CLIENT_PORT:-8084}
       - JWT_SECRET=${JWT_SECRET}
       - CLIENT_DB_URL=jdbc:postgresql://client-db:5432/client_db
-      - CLIENT_DB_USER=client
-      - CLIENT_DB_PASSWORD=client
+      - CLIENT_DB_USER=${CLIENT_DB_USER:-client}
+      - CLIENT_DB_PASSWORD=${CLIENT_DB_PASSWORD:-client}
+      - TASK_SERVICE_URL=${TASK_SERVICE_URL:-http://task-service:8083}
+      - CLIENT_ATTACHMENTS_DIR=${CLIENT_ATTACHMENTS_DIR:-uploads/client-attachments}
     depends_on:
       - client-db
 
@@ -81,34 +105,34 @@ services:
     image: postgres:16
     environment:
       - POSTGRES_DB=auth_db
-      - POSTGRES_USER=auth
-      - POSTGRES_PASSWORD=auth
+      - POSTGRES_USER=${AUTH_DB_USER:-auth}
+      - POSTGRES_PASSWORD=${AUTH_DB_PASSWORD:-auth}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:${AUTH_DB_HOST_PORT:-5433}:5432"
 
   user-db:
     image: postgres:16
     environment:
       - POSTGRES_DB=user_db
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=user
+      - POSTGRES_USER=${USER_DB_USER:-user}
+      - POSTGRES_PASSWORD=${USER_DB_PASSWORD:-user}
     ports:
-      - "5434:5432"
+      - "127.0.0.1:${USER_DB_HOST_PORT:-5434}:5432"
 
   task-db:
     image: postgres:16
     environment:
       - POSTGRES_DB=task_db
-      - POSTGRES_USER=task
-      - POSTGRES_PASSWORD=task
+      - POSTGRES_USER=${TASK_DB_USER:-task}
+      - POSTGRES_PASSWORD=${TASK_DB_PASSWORD:-task}
     ports:
-      - "5435:5432"
+      - "127.0.0.1:${TASK_DB_HOST_PORT:-5435}:5432"
 
   client-db:
     image: postgres:16
     environment:
       - POSTGRES_DB=client_db
-      - POSTGRES_USER=client
-      - POSTGRES_PASSWORD=client
+      - POSTGRES_USER=${CLIENT_DB_USER:-client}
+      - POSTGRES_PASSWORD=${CLIENT_DB_PASSWORD:-client}
     ports:
-      - "5436:5432"
+      - "127.0.0.1:${CLIENT_DB_HOST_PORT:-5436}:5432"

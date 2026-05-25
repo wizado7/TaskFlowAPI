@@ -1,0 +1,221 @@
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  imagePullPolicy: IfNotPresent
+  storageClassName: ""
+  allowInsecureDefaults: false
+  labels: {}
+
+config:
+  springProfilesActive: prod
+  googleRedirectUri: https://api.example.com/login/oauth2/code/google
+  frontendOauthSuccessUrl: https://app.example.com/auth/callback
+  websocketAllowedOriginPatterns: https://app.example.com
+  jwtExpirationMinutes: "60"
+  jwtRefreshDays: "14"
+  publicRegistrationEnabled: "false"
+  authRateLimit:
+    enabled: "true"
+    maxAttempts: "10"
+    windowSeconds: "60"
+    blockSeconds: "900"
+  taskAttachmentsDir: /data/task-attachments
+  clientAttachmentsDir: /data/client-attachments
+  userAvatarsDir: /data/user-avatars
+
+secrets:
+  create: false
+  existingSecret: taskflow-secrets
+  jwtSecret: replace-with-strong-secret
+  internalApiToken: replace-with-strong-internal-token
+  googleClientId: replace-me
+  googleClientSecret: replace-me
+  bootstrapAdminEmail: admin@admin.com
+  bootstrapAdminPassword: change-me
+  databasePasswords:
+    auth: auth
+    user: user
+    task: task
+    client: client
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  apiHost: api.example.com
+  tls: []
+
+networkPolicy:
+  enabled: false
+  externalDatabaseCidrs:
+    - 10.0.0.0/8
+
+services:
+  apiGateway:
+    name: api-gateway
+    image:
+      repository: api-gateway
+      tag: latest
+    replicas: 2
+    port: 8080
+    envPortName: GATEWAY_PORT
+    persistence: []
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  authService:
+    name: auth-service
+    image:
+      repository: auth-service
+      tag: latest
+    replicas: 1
+    port: 8081
+    envPortName: AUTH_PORT
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  userService:
+    name: user-service
+    image:
+      repository: user-service
+      tag: latest
+    replicas: 1
+    port: 8082
+    envPortName: USER_PORT
+    persistence:
+      - name: user-avatars
+        mountPath: /data/user-avatars
+        size: 1Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        cpu: 750m
+        memory: 768Mi
+  taskService:
+    name: task-service
+    image:
+      repository: task-service
+      tag: latest
+    replicas: 2
+    port: 8083
+    envPortName: TASK_PORT
+    persistence:
+      - name: task-attachments
+        mountPath: /data/task-attachments
+        size: 5Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+  clientService:
+    name: client-service
+    image:
+      repository: client-service
+      tag: latest
+    replicas: 1
+    port: 8084
+    envPortName: CLIENT_PORT
+    persistence:
+      - name: client-attachments
+        mountPath: /data/client-attachments
+        size: 5Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        cpu: 750m
+        memory: 768Mi
+
+postgresql:
+  enabled: false
+  image: postgres:16
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  databases:
+    auth:
+      serviceName: auth-db
+      database: auth_db
+      username: auth
+      passwordKey: AUTH_DB_PASSWORD
+      storage: 2Gi
+    user:
+      serviceName: user-db
+      database: user_db
+      username: user
+      passwordKey: USER_DB_PASSWORD
+      storage: 2Gi
+    task:
+      serviceName: task-db
+      database: task_db
+      username: task
+      passwordKey: TASK_DB_PASSWORD
+      storage: 2Gi
+    client:
+      serviceName: client-db
+      database: client_db
+      username: client
+      passwordKey: CLIENT_DB_PASSWORD
+      storage: 2Gi
+
+externalDatabases:
+  enabled: true
+  auth:
+    url: jdbc:postgresql://auth-db.internal.example.com:5432/auth_db
+    username: auth
+  user:
+    url: jdbc:postgresql://user-db.internal.example.com:5432/user_db
+    username: user
+  task:
+    url: jdbc:postgresql://task-db.internal.example.com:5432/task_db
+    username: task
+  client:
+    url: jdbc:postgresql://client-db.internal.example.com:5432/client_db
+    username: client
+
+monitoring:
+  enabled: false
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    retention: 15d
+    storage: 5Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 768Mi
+  grafana:
+    image: grafana/grafana:10.4.3
+    storage: 2Gi
+    admin:
+      createSecret: true
+      existingSecret: ""
+      user: admin
+      password: replace-with-strong-grafana-password
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 768Mi

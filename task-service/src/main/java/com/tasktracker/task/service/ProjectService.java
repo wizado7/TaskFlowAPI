@@ -81,6 +81,11 @@ public class ProjectService {
                 .orElseThrow(() -> new AppException("Project not found", HttpStatus.NOT_FOUND));
     }
 
+    public Project get(UUID id, String requesterEmail) {
+        requireProjectMember(id, requesterEmail);
+        return get(id);
+    }
+
     public Project update(UUID id, ProjectUpdateRequest request, String requesterEmail) {
         requireOwner(id, requesterEmail);
         Project project = get(id);
@@ -145,6 +150,19 @@ public class ProjectService {
         return repository.findById(projectId)
                 .map(project -> project.getOwnerEmail().equalsIgnoreCase(userEmail))
                 .orElse(false);
+    }
+
+    public boolean isProjectMember(UUID projectId, String userEmail) {
+        if (isOwner(projectId, userEmail)) {
+            return true;
+        }
+        return memberRepository.findByProjectIdAndUserEmail(projectId, userEmail).isPresent();
+    }
+
+    public void requireProjectMember(UUID projectId, String requesterEmail) {
+        if (!isProjectMember(projectId, requesterEmail)) {
+            throw new AppException("Project access denied", HttpStatus.FORBIDDEN);
+        }
     }
 
     private void requireOwner(UUID projectId, String requesterEmail) {

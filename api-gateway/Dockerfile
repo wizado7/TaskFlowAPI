@@ -7,6 +7,9 @@ RUN mvn -f /app/api-gateway/pom.xml -DskipTests package
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --home-dir /app app
 COPY --from=build /app/api-gateway/target/api-gateway*.jar /app/api-gateway.jar
+RUN chown -R app:app /app
+USER app
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","/app/api-gateway.jar"]

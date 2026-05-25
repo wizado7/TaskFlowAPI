@@ -9,6 +9,7 @@ import com.tasktracker.auth.repository.UserAccountRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -49,9 +50,10 @@ public class RefreshTokenService {
         );
     }
 
+    @Transactional
     public AuthResponse refresh(String refreshToken) {
         String tokenHash = hashToken(refreshToken);
-        RefreshToken stored = repository.findByTokenHash(tokenHash)
+        RefreshToken stored = repository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(() -> new AppException("Invalid refresh token", HttpStatus.UNAUTHORIZED));
         if (stored.isRevoked() || stored.getExpiresAt().isBefore(Instant.now())) {
             throw new AppException("Refresh token expired", HttpStatus.UNAUTHORIZED);

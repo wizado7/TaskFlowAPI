@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "taskflow.configName" . }}
+  labels:
+    {{- include "taskflow.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: {{ .Values.config.springProfilesActive | quote }}
+  AUTH_DB_URL: {{ ternary .Values.externalDatabases.auth.url (printf "jdbc:postgresql://%s:5432/%s" .Values.postgresql.databases.auth.serviceName .Values.postgresql.databases.auth.database) .Values.externalDatabases.enabled | quote }}
+  AUTH_DB_USER: {{ ternary .Values.externalDatabases.auth.username .Values.postgresql.databases.auth.username .Values.externalDatabases.enabled | quote }}
+  USER_DB_URL: {{ ternary .Values.externalDatabases.user.url (printf "jdbc:postgresql://%s:5432/%s" .Values.postgresql.databases.user.serviceName .Values.postgresql.databases.user.database) .Values.externalDatabases.enabled | quote }}
+  USER_DB_USER: {{ ternary .Values.externalDatabases.user.username .Values.postgresql.databases.user.username .Values.externalDatabases.enabled | quote }}
+  TASK_DB_URL: {{ ternary .Values.externalDatabases.task.url (printf "jdbc:postgresql://%s:5432/%s" .Values.postgresql.databases.task.serviceName .Values.postgresql.databases.task.database) .Values.externalDatabases.enabled | quote }}
+  TASK_DB_USER: {{ ternary .Values.externalDatabases.task.username .Values.postgresql.databases.task.username .Values.externalDatabases.enabled | quote }}
+  CLIENT_DB_URL: {{ ternary .Values.externalDatabases.client.url (printf "jdbc:postgresql://%s:5432/%s" .Values.postgresql.databases.client.serviceName .Values.postgresql.databases.client.database) .Values.externalDatabases.enabled | quote }}
+  CLIENT_DB_USER: {{ ternary .Values.externalDatabases.client.username .Values.postgresql.databases.client.username .Values.externalDatabases.enabled | quote }}
+  USER_SERVICE_URL: {{ printf "http://%s:%v" .Values.services.userService.name .Values.services.userService.port | quote }}
+  TASK_SERVICE_URL: {{ printf "http://%s:%v" .Values.services.taskService.name .Values.services.taskService.port | quote }}
+  TASK_ATTACHMENTS_DIR: {{ .Values.config.taskAttachmentsDir | quote }}
+  CLIENT_ATTACHMENTS_DIR: {{ .Values.config.clientAttachmentsDir | quote }}
+  USER_AVATARS_DIR: {{ .Values.config.userAvatarsDir | quote }}
+  GOOGLE_REDIRECT_URI: {{ .Values.config.googleRedirectUri | quote }}
+  FRONTEND_OAUTH_SUCCESS_URL: {{ .Values.config.frontendOauthSuccessUrl | quote }}
+  WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: {{ .Values.config.websocketAllowedOriginPatterns | quote }}
+  JWT_EXP_MINUTES: {{ .Values.config.jwtExpirationMinutes | quote }}
+  JWT_REFRESH_DAYS: {{ .Values.config.jwtRefreshDays | quote }}
+  PUBLIC_REGISTRATION_ENABLED: {{ .Values.config.publicRegistrationEnabled | quote }}
+  AUTH_RATE_LIMIT_ENABLED: {{ .Values.config.authRateLimit.enabled | quote }}
+  AUTH_RATE_LIMIT_MAX_ATTEMPTS: {{ .Values.config.authRateLimit.maxAttempts | quote }}
+  AUTH_RATE_LIMIT_WINDOW_SECONDS: {{ .Values.config.authRateLimit.windowSeconds | quote }}
+  AUTH_RATE_LIMIT_BLOCK_SECONDS: {{ .Values.config.authRateLimit.blockSeconds | quote }}
+  GATEWAY_PORT: {{ .Values.services.apiGateway.port | quote }}
+  AUTH_PORT: {{ .Values.services.authService.port | quote }}
+  USER_PORT: {{ .Values.services.userService.port | quote }}
+  TASK_PORT: {{ .Values.services.taskService.port | quote }}
+  CLIENT_PORT: {{ .Values.services.clientService.port | quote }}

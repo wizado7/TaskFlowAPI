@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: task-tracker-config
+
+data:
+  SPRING_PROFILES_ACTIVE: k8s
+  AUTH_DB_URL: jdbc:postgresql://auth-db:5432/auth_db
+  AUTH_DB_USER: auth
+  USER_DB_URL: jdbc:postgresql://user-db:5432/user_db
+  USER_DB_USER: user
+  TASK_DB_URL: jdbc:postgresql://task-db:5432/task_db
+  TASK_DB_USER: task
+  CLIENT_DB_URL: jdbc:postgresql://client-db:5432/client_db
+  CLIENT_DB_USER: client
+  USER_SERVICE_URL: http://user-service:8082
+  TASK_SERVICE_URL: http://task-service:8083
+  TASK_ATTACHMENTS_DIR: /data/task-attachments
+  CLIENT_ATTACHMENTS_DIR: /data/client-attachments
+  USER_AVATARS_DIR: /data/user-avatars
+  GOOGLE_REDIRECT_URI: https://api.example.com/login/oauth2/code/google
+  FRONTEND_OAUTH_SUCCESS_URL: https://app.example.com/auth/callback
+  WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: https://app.example.com
+  JWT_EXP_MINUTES: "60"
+  JWT_REFRESH_DAYS: "14"
+  PUBLIC_REGISTRATION_ENABLED: "false"
+  AUTH_RATE_LIMIT_ENABLED: "true"
+  AUTH_RATE_LIMIT_MAX_ATTEMPTS: "10"
+  AUTH_RATE_LIMIT_WINDOW_SECONDS: "60"
+  AUTH_RATE_LIMIT_BLOCK_SECONDS: "900"
+  GATEWAY_PORT: "8080"
+  AUTH_PORT: "8081"
+  USER_PORT: "8082"
+  TASK_PORT: "8083"
+  CLIENT_PORT: "8084"

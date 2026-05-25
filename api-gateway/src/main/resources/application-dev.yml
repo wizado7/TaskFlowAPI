@@ -1,0 +1,18 @@
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    urls:
+      - name: auth-service
+        url: /auth-service/v3/api-docs
+      - name: user-service
+        url: /user-service/v3/api-docs
+      - name: task-service
+        url: /task-service/v3/api-docs
+      - name: client-service
+        url: /client-service/v3/api-docs
+
+app:
+  security:
+    public-api-docs-enabled: true

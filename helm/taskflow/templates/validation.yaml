@@ -1,0 +1,28 @@
+{{- if not .Values.global.allowInsecureDefaults }}
+{{- if .Values.secrets.create }}
+{{- if or
+  (eq (default "" .Values.secrets.jwtSecret) "replace-with-strong-secret")
+  (eq (default "" .Values.secrets.internalApiToken) "replace-with-strong-internal-token")
+  (eq (default "" .Values.secrets.googleClientId) "replace-me")
+  (eq (default "" .Values.secrets.googleClientSecret) "replace-me")
+  (eq (default "" .Values.secrets.bootstrapAdminPassword) "change-me")
+  (eq (default "" .Values.secrets.databasePasswords.auth) "auth")
+  (eq (default "" .Values.secrets.databasePasswords.user) "user")
+  (eq (default "" .Values.secrets.databasePasswords.task) "task")
+  (eq (default "" .Values.secrets.databasePasswords.client) "client")
+}}
+{{- fail "Refusing to render TaskFlow Helm chart with placeholder secrets. Set secrets.create=false with secrets.existingSecret, provide real secret values, or set global.allowInsecureDefaults=true only for local demos." }}
+{{- end }}
+{{- else if not .Values.secrets.existingSecret }}
+{{- fail "secrets.existingSecret is required when secrets.create=false." }}
+{{- end }}
+{{- if and .Values.monitoring.enabled .Values.monitoring.grafana.admin.createSecret }}
+{{- if or
+  (eq (default "" .Values.monitoring.grafana.admin.password) "")
+  (eq (default "" .Values.monitoring.grafana.admin.password) "admin")
+  (eq (default "" .Values.monitoring.grafana.admin.password) "replace-with-strong-grafana-password")
+}}
+{{- fail "Refusing to render bundled Grafana with default admin credentials. Provide monitoring.grafana.admin.existingSecret, override admin credentials, disable monitoring, or set global.allowInsecureDefaults=true only for local demos." }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,15 @@
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+app:
+  security:
+    public-api-docs-enabled: true
+    public-registration-enabled: true
+    auth-rate-limit:
+      enabled: true
+      max-attempts: 60
+      window-seconds: 60
+      block-seconds: 300

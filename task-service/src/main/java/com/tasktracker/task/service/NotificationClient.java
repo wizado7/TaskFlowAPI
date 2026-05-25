@@ -1,6 +1,8 @@
 package com.tasktracker.task.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -9,11 +11,14 @@ public class NotificationClient {
 
     private final RestTemplate restTemplate;
     private final String baseUrl;
+    private final String internalToken;
 
     public NotificationClient(RestTemplate restTemplate,
-                              @Value("${USER_SERVICE_URL:http://user-service:8082}") String baseUrl) {
+                              @Value("${USER_SERVICE_URL:http://user-service:8082}") String baseUrl,
+                              @Value("${app.internal-api.token:}") String internalToken) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;
+        this.internalToken = internalToken;
     }
 
     public void sendProjectInvite(String email, String projectName, String token, String inviterEmail) {
@@ -25,7 +30,9 @@ public class NotificationClient {
                 "/api/v1/projects/invites/" + token + "/accept",
             "Accept"
         );
-        restTemplate.postForEntity(baseUrl + "/api/v1/internal/notifications", request, Void.class);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Internal-Token", internalToken);
+        restTemplate.postForEntity(baseUrl + "/api/v1/internal/notifications", new HttpEntity<>(request, headers), Void.class);
     }
 
     private record NotificationCreateRequest(

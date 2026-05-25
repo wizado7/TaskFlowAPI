@@ -1,0 +1,11 @@
+apiVersion: v2
+name: taskflow
+description: Enterprise Helm chart for TaskFlow microservices.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - taskflow
+  - task-tracker
+  - crm
+  - microservices

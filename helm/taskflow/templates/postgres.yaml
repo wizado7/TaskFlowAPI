@@ -1,0 +1,86 @@
+{{- if .Values.postgresql.enabled }}
+{{- range $key, $db := .Values.postgresql.databases }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $db.serviceName }}
+  labels:
+    {{- include "taskflow.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $db.serviceName }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      app.kubernetes.io/component: {{ $db.serviceName }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/component: {{ $db.serviceName }}
+    spec:
+      containers:
+        - name: {{ $db.serviceName }}
+          image: {{ $.Values.postgresql.image | quote }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ $db.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ $db.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "taskflow.secretName" $ }}
+                  key: {{ $db.passwordKey }}
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ $db.username | quote }}, "-d", {{ $db.database | quote }}]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml $.Values.postgresql.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $db.serviceName }}-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $db.serviceName }}-pvc
+  labels:
+    {{- include "taskflow.labels" $ | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if $.Values.global.storageClassName }}
+  storageClassName: {{ $.Values.global.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $db.storage | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $db.serviceName }}
+  labels:
+    {{- include "taskflow.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $db.serviceName }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $db.serviceName }}
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+{{- end }}
+{{- end }}

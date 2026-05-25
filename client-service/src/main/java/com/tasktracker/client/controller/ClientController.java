@@ -43,27 +43,32 @@ public class ClientController {
     @PostMapping
     public ResponseEntity<ClientResponse> create(@AuthenticationPrincipal Jwt jwt,
                                                  @Valid @RequestBody ClientCreateRequest request) {
-        return ResponseEntity.ok(toResponse(service.create(request, jwt.getSubject())));
+        return ResponseEntity.ok(toResponse(service.create(request, jwt.getSubject(), jwt.getTokenValue())));
     }
 
     @GetMapping
-    public ResponseEntity<List<ClientResponse>> list(@RequestParam(value = "projectId", required = false) UUID projectId) {
-        return ResponseEntity.ok(service.list(projectId).stream().map(this::toResponse).toList());
+    public ResponseEntity<List<ClientResponse>> list(@AuthenticationPrincipal Jwt jwt,
+                                                     @RequestParam("projectId") UUID projectId) {
+        return ResponseEntity.ok(service.list(projectId, jwt.getTokenValue()).stream().map(this::toResponse).toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ClientResponse> get(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(toResponse(service.get(id)));
+    public ResponseEntity<ClientResponse> get(@PathVariable("id") UUID id,
+                                              @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(toResponse(service.get(id, jwt.getTokenValue())));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ClientResponse> update(@PathVariable("id") UUID id, @RequestBody ClientUpdateRequest request) {
-        return ResponseEntity.ok(toResponse(service.update(id, request)));
+    public ResponseEntity<ClientResponse> update(@PathVariable("id") UUID id,
+                                                 @AuthenticationPrincipal Jwt jwt,
+                                                 @RequestBody ClientUpdateRequest request) {
+        return ResponseEntity.ok(toResponse(service.update(id, request, jwt.getTokenValue())));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable("id") UUID id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable("id") UUID id,
+                                       @AuthenticationPrincipal Jwt jwt) {
+        service.delete(id, jwt.getTokenValue());
         return ResponseEntity.noContent().build();
     }
 
@@ -71,30 +76,33 @@ public class ClientController {
     public ResponseEntity<ClientCommentResponse> addComment(@PathVariable("id") UUID id,
                                                             @AuthenticationPrincipal Jwt jwt,
                                                             @Valid @RequestBody ClientCommentRequest request) {
-        return ResponseEntity.ok(toResponse(service.addComment(id, jwt.getSubject(), request.message())));
+        return ResponseEntity.ok(toResponse(service.addComment(id, jwt.getSubject(), request.message(), jwt.getTokenValue())));
     }
 
     @GetMapping("/{id}/comments")
-    public ResponseEntity<List<ClientCommentResponse>> listComments(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(service.listComments(id).stream().map(this::toResponse).toList());
+    public ResponseEntity<List<ClientCommentResponse>> listComments(@PathVariable("id") UUID id,
+                                                                    @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(service.listComments(id, jwt.getTokenValue()).stream().map(this::toResponse).toList());
     }
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ClientAttachmentResponse> uploadAttachment(@PathVariable("id") UUID id,
                                                                      @AuthenticationPrincipal Jwt jwt,
                                                                      @RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(toResponse(service.uploadAttachment(id, jwt.getSubject(), file)));
+        return ResponseEntity.ok(toResponse(service.uploadAttachment(id, jwt.getSubject(), file, jwt.getTokenValue())));
     }
 
     @GetMapping("/{id}/attachments")
-    public ResponseEntity<List<ClientAttachmentResponse>> listAttachments(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(service.listAttachments(id).stream().map(this::toResponse).toList());
+    public ResponseEntity<List<ClientAttachmentResponse>> listAttachments(@PathVariable("id") UUID id,
+                                                                         @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(service.listAttachments(id, jwt.getTokenValue()).stream().map(this::toResponse).toList());
     }
 
     @GetMapping("/{id}/attachments/{attachmentId}/download")
     public ResponseEntity<Resource> downloadAttachment(@PathVariable("id") UUID id,
-                                                       @PathVariable("attachmentId") UUID attachmentId) {
-        var download = service.downloadAttachment(id, attachmentId);
+                                                       @PathVariable("attachmentId") UUID attachmentId,
+                                                       @AuthenticationPrincipal Jwt jwt) {
+        var download = service.downloadAttachment(id, attachmentId, jwt.getTokenValue());
         MediaType mediaType;
         try {
             mediaType = MediaType.parseMediaType(download.contentType());
@@ -114,7 +122,7 @@ public class ClientController {
     public ResponseEntity<Void> deleteAttachment(@PathVariable("id") UUID id,
                                                  @PathVariable("attachmentId") UUID attachmentId,
                                                  @AuthenticationPrincipal Jwt jwt) {
-        service.deleteAttachment(id, attachmentId, jwt.getSubject());
+        service.deleteAttachment(id, attachmentId, jwt.getSubject(), jwt.getTokenValue());
         return ResponseEntity.noContent().build();
     }
 

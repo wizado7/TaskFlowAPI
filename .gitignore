@@ -52,3 +52,20 @@ WEB_UI/
 docs/
 report-docs/
 Mob_app/
+
+# Kubernetes
+k8s/**/secret.yaml
+k8s/**/secrets.yaml
+k8s/**/*.secret.yaml
+k8s/**/*.secrets.yaml
+!k8s/**/secret.example.yaml
+!k8s/**/secrets.example.yaml
+kubeconfig*
+*.kubeconfig
+
+# Helm local overrides
+helm/**/values-dev.yaml
+helm/**/values-stage.yaml
+helm/**/values-prod.yaml
+helm/**/values-local.yaml
+!helm/**/values-*.example.yaml

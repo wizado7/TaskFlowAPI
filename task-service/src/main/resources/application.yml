@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${TASK_DB_URL:jdbc:postgresql://task-db:5432/task_db}
     username: ${TASK_DB_USER:task}
-    password: ${TASK_DB_PASSWORD:task}
+    password: ${TASK_DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -16,20 +16,41 @@ spring:
     enabled: true
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 1000MB
+      max-file-size: 25MB
+      max-request-size: 50MB
   security:
     oauth2:
       resourceserver:
         jwt:
-          secret-key: ${JWT_SECRET:change-me}
+          secret-key: ${JWT_SECRET}
 
 app:
+  security:
+    public-api-docs-enabled: false
+  internal-api:
+    token: ${INTERNAL_API_TOKEN}
+  websocket:
+    allowed-origin-patterns: ${WEBSOCKET_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173}
   task-attachments:
     dir: ${TASK_ATTACHMENTS_DIR:uploads/task-attachments}
 
 springdoc:
   api-docs:
+    enabled: false
     path: /v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

@@ -8,6 +8,7 @@ import com.tasktracker.auth.entity.Role;
 import com.tasktracker.auth.entity.UserAccount;
 import com.tasktracker.auth.exception.AppException;
 import com.tasktracker.auth.repository.UserAccountRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,18 +25,24 @@ public class UserAccountService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final UserProfileProvisioner profileProvisioner;
+    private final boolean publicRegistrationEnabled;
 
     public UserAccountService(UserAccountRepository repository,
                               PasswordEncoder passwordEncoder,
                               AuthenticationManager authenticationManager,
-                              UserProfileProvisioner profileProvisioner) {
+                              UserProfileProvisioner profileProvisioner,
+                              @Value("${app.security.public-registration-enabled:true}") boolean publicRegistrationEnabled) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.profileProvisioner = profileProvisioner;
+        this.publicRegistrationEnabled = publicRegistrationEnabled;
     }
 
     public UserAccount register(RegisterRequest request) {
+        if (!publicRegistrationEnabled) {
+            throw new AppException("Public registration is disabled", HttpStatus.FORBIDDEN);
+        }
         if (repository.existsByEmail(request.email())) {
             throw new AppException("Email already registered", HttpStatus.CONFLICT);
         }

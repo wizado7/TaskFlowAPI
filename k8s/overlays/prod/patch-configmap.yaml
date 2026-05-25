@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: task-tracker-config
+data:
+  SPRING_PROFILES_ACTIVE: prod
+  AUTH_DB_URL: jdbc:postgresql://auth-db.prod.internal.example.com:5432/auth_db
+  USER_DB_URL: jdbc:postgresql://user-db.prod.internal.example.com:5432/user_db
+  TASK_DB_URL: jdbc:postgresql://task-db.prod.internal.example.com:5432/task_db
+  CLIENT_DB_URL: jdbc:postgresql://client-db.prod.internal.example.com:5432/client_db
+  AUTH_DB_USER: auth
+  USER_DB_USER: user
+  TASK_DB_USER: task
+  CLIENT_DB_USER: client
+  GOOGLE_REDIRECT_URI: https://api.example.com/login/oauth2/code/google
+  FRONTEND_OAUTH_SUCCESS_URL: https://app.example.com/auth/callback
+  WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: https://app.example.com
+  JWT_EXP_MINUTES: "30"
+  JWT_REFRESH_DAYS: "7"

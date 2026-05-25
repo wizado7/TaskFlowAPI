@@ -64,25 +64,28 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          secret-key: ${JWT_SECRET:change-me}
+          secret-key: ${JWT_SECRET}
 
 springdoc:
   api-docs:
-    enabled: true
+    enabled: false
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
-    urls:
-      - name: auth-service
-        url: /auth-service/v3/api-docs
-      - name: user-service
-        url: /user-service/v3/api-docs
-      - name: task-service
-        url: /task-service/v3/api-docs
-      - name: client-service
-        url: /client-service/v3/api-docs
+
+app:
+  security:
+    public-api-docs-enabled: false
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

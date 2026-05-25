@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-service
+  labels:
+    app: task-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task-service
+  template:
+    metadata:
+      labels:
+        app: task-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: task-service
+          image: task-service:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: task-tracker-config
+            - secretRef:
+                name: task-tracker-secrets
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: task-attachments
+              mountPath: /data/task-attachments
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: 750m
+              memory: 768Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: task-attachments
+          persistentVolumeClaim:
+            claimName: task-attachments-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: task-attachments-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-service
+  labels:
+    app: task-service
+spec:
+  selector:
+    app: task-service
+  ports:
+    - name: http
+      port: 8083
+      targetPort: http
+  type: ClusterIP

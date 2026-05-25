@@ -1,0 +1,377 @@
+name: Enterprise CI/CD
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - main
+  push:
+    branches:
+      - develop
+      - staging
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: taskflow-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}/taskflow
+
+jobs:
+  supply-chain-policy:
+    name: Supply-chain policy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Ensure actions are pinned by commit SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          violations=0
+          while IFS= read -r action; do
+            [ -z "${action}" ] && continue
+            case "${action}" in
+              ./*) continue ;;
+            esac
+            ref="${action##*@}"
+            if [[ ! "${ref}" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::GitHub Action '${action}' must be pinned to a full 40-character commit SHA"
+              violations=1
+            fi
+          done < <(grep -RhoE 'uses:[[:space:]]+[^[:space:]#]+' .github/workflows | awk '{print $2}')
+          exit "${violations}"
+
+      - name: Ensure production manifests do not create raw Kubernetes secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R "kind: Secret" k8s/overlays/stage k8s/overlays/prod; then
+            echo "::error::Stage/prod overlays must use ExternalSecret or private Helm values, not committed raw Secret manifests"
+            exit 1
+          fi
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+
+  backend:
+    name: Backend build and tests
+    runs-on: ubuntu-latest
+    needs:
+      - supply-chain-policy
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build backend services
+        run: mvn -B verify
+
+  kustomize:
+    name: Kustomize validation
+    runs-on: ubuntu-latest
+    needs:
+      - supply-chain-policy
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
+
+      - name: Render Kubernetes overlays
+        run: |
+          kubectl kustomize k8s/overlays/dev >/tmp/taskflow-dev.yaml
+          kubectl kustomize k8s/overlays/stage >/tmp/taskflow-stage.yaml
+          kubectl kustomize k8s/overlays/prod >/tmp/taskflow-prod.yaml
+
+  helm:
+    name: Helm validation
+    runs-on: ubuntu-latest
+    needs:
+      - supply-chain-policy
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+
+      - name: Lint chart
+        run: helm lint helm/taskflow -f helm/taskflow/values-prod.example.yaml
+
+      - name: Render Helm environments
+        run: |
+          helm template taskflow-dev helm/taskflow -f helm/taskflow/values-dev.example.yaml >/tmp/taskflow-dev.yaml
+          helm template taskflow-stage helm/taskflow -f helm/taskflow/values-stage.example.yaml >/tmp/taskflow-stage.yaml
+          helm template taskflow-prod helm/taskflow -f helm/taskflow/values-prod.example.yaml >/tmp/taskflow-prod.yaml
+
+  repository-scan:
+    name: Repository vulnerability scan
+    runs-on: ubuntu-latest
+    needs:
+      - supply-chain-policy
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # v0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload filesystem scan report
+        uses: github/codeql-action/upload-sarif@fee9466b8957867761f2d78f922ab084e3e2dd17 # v3
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          sarif_file: trivy-fs.sarif
+
+  docker:
+    name: Build, attest and scan images
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - kustomize
+      - helm
+      - repository-scan
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api-gateway
+            dockerfile: api-gateway/Dockerfile
+          - service: auth-service
+            dockerfile: auth-service/Dockerfile
+          - service: user-service
+            dockerfile: user-service/Dockerfile
+          - service: task-service
+            dockerfile: task-service/Dockerfile
+          - service: client-service
+            dockerfile: client-service/Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name == 'push' }}
+          load: ${{ github.event_name != 'push' }}
+          provenance: ${{ github.event_name == 'push' && 'mode=max' || 'false' }}
+          sbom: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_REGISTRY }}/${{ matrix.service }}:${{ github.ref_name }}
+
+      - name: Scan image
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # v0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload image scan report
+        uses: github/codeql-action/upload-sarif@fee9466b8957867761f2d78f922ab084e3e2dd17 # v3
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs:
+      - docker
+    if: github.event_name == 'push'
+    environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'staging' && 'stage' || 'dev' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DEPLOY_ENV: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'staging' && 'stage' || 'dev' }}
+      NAMESPACE: ${{ github.ref_name == 'main' && 'taskflow-prod' || github.ref_name == 'staging' && 'taskflow-stage' || 'taskflow-dev' }}
+      YC_CLOUD_ID: ${{ vars.YC_CLOUD_ID }}
+      YC_FOLDER_ID: ${{ vars.YC_FOLDER_ID }}
+      YC_K8S_CLUSTER_ID: ${{ vars.YC_K8S_CLUSTER_ID }}
+      YC_K8S_ENDPOINT_FLAG: ${{ vars.YC_K8S_ENDPOINT_FLAG || '--external' }}
+      YC_SERVICE_ACCOUNT_ID: ${{ vars.YC_SERVICE_ACCOUNT_ID }}
+      YC_OIDC_AUDIENCE: ${{ vars.YC_OIDC_AUDIENCE }}
+      YC_CLI_SHA256: ${{ vars.YC_CLI_SHA256 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+
+      - name: Validate deployment inputs
+        shell: bash
+        env:
+          HELM_VALUES_B64: ${{ secrets.HELM_VALUES_B64 }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in YC_CLOUD_ID YC_FOLDER_ID YC_K8S_CLUSTER_ID YC_SERVICE_ACCOUNT_ID YC_OIDC_AUDIENCE YC_CLI_SHA256 HELM_VALUES_B64; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::${name} must be configured in the GitHub Environment"
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
+      - name: Install Yandex Cloud CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSLo "${RUNNER_TEMP}/yc_linux_amd64.tar.gz" \
+            https://storage.yandexcloud.net/yandexcloud-yc/release/yc_linux_amd64.tar.gz
+          printf '%s  %s\n' "${YC_CLI_SHA256}" "${RUNNER_TEMP}/yc_linux_amd64.tar.gz" | sha256sum -c -
+          mkdir -p "${RUNNER_TEMP}/yc"
+          tar -xzf "${RUNNER_TEMP}/yc_linux_amd64.tar.gz" -C "${RUNNER_TEMP}/yc"
+          chmod +x "${RUNNER_TEMP}/yc/yc"
+          echo "${RUNNER_TEMP}/yc" >> "${GITHUB_PATH}"
+
+      - name: Exchange GitHub OIDC token for Yandex IAM token
+        shell: bash
+        run: |
+          set -euo pipefail
+          github_oidc_json="$(curl -fsSLG \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            --data-urlencode "audience=${YC_OIDC_AUDIENCE}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+          github_jwt="$(jq -r '.value' <<< "${github_oidc_json}")"
+
+          iam_json="$(curl -fsSL \
+            -X POST https://auth.yandex.cloud/oauth/token \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            --data-urlencode "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
+            --data-urlencode "audience=${YC_SERVICE_ACCOUNT_ID}" \
+            --data-urlencode "subject_token=${github_jwt}" \
+            --data-urlencode "subject_token_type=urn:ietf:params:oauth:token-type:id_token")"
+          iam_token="$(jq -r '.access_token' <<< "${iam_json}")"
+          if [ -z "${iam_token}" ] || [ "${iam_token}" = "null" ]; then
+            echo "::error::Failed to exchange GitHub OIDC token for Yandex IAM token"
+            exit 1
+          fi
+          echo "::add-mask::${iam_token}"
+          echo "YC_TOKEN=${iam_token}" >> "${GITHUB_ENV}"
+
+      - name: Configure Kubernetes credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          yc config profile create ci
+          yc config set token "${YC_TOKEN}"
+          yc config set cloud-id "${YC_CLOUD_ID}"
+          yc config set folder-id "${YC_FOLDER_ID}"
+          yc managed-kubernetes cluster get-credentials \
+            --id "${YC_K8S_CLUSTER_ID}" \
+            "${YC_K8S_ENDPOINT_FLAG}" \
+            --force
+
+      - name: Deploy with Helm
+        shell: bash
+        env:
+          HELM_VALUES_B64: ${{ secrets.HELM_VALUES_B64 }}
+        run: |
+          set -euo pipefail
+          helm upgrade --install taskflow ./helm/taskflow \
+            --namespace "${NAMESPACE}" \
+            --create-namespace \
+            --atomic \
+            --wait \
+            --timeout 10m \
+            -f <(printf '%s' "${HELM_VALUES_B64}" | base64 -d) \
+            --set-string global.imageRegistry="${IMAGE_REGISTRY}" \
+            --set-string services.apiGateway.image.tag="${GITHUB_SHA}" \
+            --set-string services.authService.image.tag="${GITHUB_SHA}" \
+            --set-string services.userService.image.tag="${GITHUB_SHA}" \
+            --set-string services.taskService.image.tag="${GITHUB_SHA}" \
+            --set-string services.clientService.image.tag="${GITHUB_SHA}"
+
+      - name: Verify rollout
+        shell: bash
+        run: |
+          set -euo pipefail
+          for service in api-gateway auth-service user-service task-service client-service; do
+            kubectl -n "${NAMESPACE}" rollout status "deployment/${service}" --timeout=240s
+          done

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-db
+  labels:
+    app: client-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client-db
+  template:
+    metadata:
+      labels:
+        app: client-db
+    spec:
+      containers:
+        - name: client-db
+          image: postgres:16
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: client_db
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: task-tracker-config
+                  key: CLIENT_DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-tracker-secrets
+                  key: CLIENT_DB_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "client", "-d", "client_db"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: client-db-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: client-db-data
+          persistentVolumeClaim:
+            claimName: client-db-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: client-db-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-db
+  labels:
+    app: client-db
+spec:
+  selector:
+    app: client-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

@@ -1,0 +1,87 @@
+global:
+  imageRegistry: registry.example.com/taskflow
+  imagePullPolicy: IfNotPresent
+  storageClassName: fast-ssd
+  allowInsecureDefaults: false
+
+config:
+  springProfilesActive: prod
+  googleRedirectUri: https://api.taskflow.example.com/login/oauth2/code/google
+  frontendOauthSuccessUrl: https://app.taskflow.example.com/auth/callback
+  websocketAllowedOriginPatterns: https://app.taskflow.example.com
+  jwtExpirationMinutes: "60"
+  jwtRefreshDays: "14"
+  publicRegistrationEnabled: "false"
+  authRateLimit:
+    enabled: "true"
+    maxAttempts: "10"
+    windowSeconds: "60"
+    blockSeconds: "900"
+
+secrets:
+  create: false
+  existingSecret: taskflow-secrets
+
+ingress:
+  enabled: true
+  className: nginx
+  apiHost: api.taskflow.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: taskflow-api-tls
+      hosts:
+        - api.taskflow.example.com
+
+networkPolicy:
+  enabled: true
+  externalDatabaseCidrs:
+    - 10.0.0.0/8
+
+services:
+  apiGateway:
+    replicas: 2
+    image:
+      repository: api-gateway
+      tag: "0.1.0"
+  authService:
+    replicas: 1
+    image:
+      repository: auth-service
+      tag: "0.1.0"
+  userService:
+    replicas: 2
+    image:
+      repository: user-service
+      tag: "0.1.0"
+  taskService:
+    replicas: 3
+    image:
+      repository: task-service
+      tag: "0.1.0"
+  clientService:
+    replicas: 2
+    image:
+      repository: client-service
+      tag: "0.1.0"
+
+postgresql:
+  enabled: false
+
+externalDatabases:
+  enabled: true
+  auth:
+    url: jdbc:postgresql://auth-db.internal.example.com:5432/auth_db
+    username: auth
+  user:
+    url: jdbc:postgresql://user-db.internal.example.com:5432/user_db
+    username: user
+  task:
+    url: jdbc:postgresql://task-db.internal.example.com:5432/task_db
+    username: task
+  client:
+    url: jdbc:postgresql://client-db.internal.example.com:5432/client_db
+    username: client
+
+monitoring:
+  enabled: false

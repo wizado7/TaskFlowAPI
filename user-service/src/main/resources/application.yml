@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${USER_DB_URL:jdbc:postgresql://user-db:5432/user_db}
     username: ${USER_DB_USER:user}
-    password: ${USER_DB_PASSWORD:user}
+    password: ${USER_DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -18,10 +18,33 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          secret-key: ${JWT_SECRET:change-me}
+          secret-key: ${JWT_SECRET}
 
 springdoc:
   api-docs:
+    enabled: false
     path: /v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
+
+app:
+  security:
+    public-api-docs-enabled: false
+  internal-api:
+    token: ${INTERNAL_API_TOKEN}
+  user-avatars:
+    dir: ${USER_AVATARS_DIR:uploads/user-avatars}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

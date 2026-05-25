@@ -1,0 +1,9 @@
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  security:
+    public-api-docs-enabled: false

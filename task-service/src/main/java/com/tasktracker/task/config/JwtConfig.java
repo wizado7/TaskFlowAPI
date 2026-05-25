@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 public class JwtConfig {
 
     @Bean
-    public JwtDecoder jwtDecoder(@Value("${JWT_SECRET:change-me}") String secret) {
+    public JwtDecoder jwtDecoder(@Value("${JWT_SECRET}") String secret) {
         SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }

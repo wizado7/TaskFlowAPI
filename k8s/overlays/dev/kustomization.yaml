@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: taskflow-dev
+resources:
+  - namespace.yaml
+  - ../../base
+  - ../../bundles/dev
+  - secret.example.yaml
+  - grafana-admin.example.yaml
+labels:
+  - pairs:
+      environment: dev
+      branch: develop
+    includeSelectors: false
+images:
+  - name: api-gateway
+    newName: registry.example.com/taskflow/api-gateway
+    newTag: develop
+  - name: auth-service
+    newName: registry.example.com/taskflow/auth-service
+    newTag: develop
+  - name: user-service
+    newName: registry.example.com/taskflow/user-service
+    newTag: develop
+  - name: task-service
+    newName: registry.example.com/taskflow/task-service
+    newTag: develop
+  - name: client-service
+    newName: registry.example.com/taskflow/client-service
+    newTag: develop
+patches:
+  - path: patch-configmap.yaml
+  - path: patch-replicas.yaml

@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: taskflow-stage
+resources:
+  - namespace.yaml
+  - ../../base
+  - externalsecret.yaml
+labels:
+  - pairs:
+      environment: stage
+      branch: staging
+    includeSelectors: false
+images:
+  - name: api-gateway
+    newName: registry.example.com/taskflow/api-gateway
+    newTag: staging
+  - name: auth-service
+    newName: registry.example.com/taskflow/auth-service
+    newTag: staging
+  - name: user-service
+    newName: registry.example.com/taskflow/user-service
+    newTag: staging
+  - name: task-service
+    newName: registry.example.com/taskflow/task-service
+    newTag: staging
+  - name: client-service
+    newName: registry.example.com/taskflow/client-service
+    newTag: staging
+patches:
+  - path: patch-configmap.yaml
+  - path: patch-replicas.yaml
+  - path: patch-resources.yaml
+  - path: patch-networkpolicy.yaml

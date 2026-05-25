@@ -7,6 +7,9 @@ RUN mvn -f /app/client-service/pom.xml -DskipTests package
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --home-dir /app app
 COPY --from=build /app/client-service/target/client-service*.jar /app/client-service.jar
+RUN mkdir -p /app/uploads/client-attachments && chown -R app:app /app
+USER app
 EXPOSE 8084
 ENTRYPOINT ["java","-jar","/app/client-service.jar"]

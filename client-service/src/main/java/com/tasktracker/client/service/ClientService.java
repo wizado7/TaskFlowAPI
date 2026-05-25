@@ -22,27 +22,47 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class ClientService {
 
-    private static final long MAX_FILE_SIZE_BYTES = 100L * 1024L * 1024L;
-    private static final Set<String> FORBIDDEN_EXTENSIONS = Set.of("exe", "bat", "cmd");
+    private static final long MAX_FILE_SIZE_BYTES = 25L * 1024L * 1024L;
+    private static final Map<String, Set<String>> ALLOWED_FILE_TYPES = Map.ofEntries(
+            Map.entry("pdf", Set.of("application/pdf")),
+            Map.entry("png", Set.of("image/png")),
+            Map.entry("jpg", Set.of("image/jpeg")),
+            Map.entry("jpeg", Set.of("image/jpeg")),
+            Map.entry("gif", Set.of("image/gif")),
+            Map.entry("webp", Set.of("image/webp")),
+            Map.entry("txt", Set.of("text/plain")),
+            Map.entry("csv", Set.of("text/csv", "application/csv", "application/vnd.ms-excel")),
+            Map.entry("md", Set.of("text/markdown", "text/plain")),
+            Map.entry("doc", Set.of("application/msword")),
+            Map.entry("docx", Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document")),
+            Map.entry("xls", Set.of("application/vnd.ms-excel")),
+            Map.entry("xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+            Map.entry("ppt", Set.of("application/vnd.ms-powerpoint")),
+            Map.entry("pptx", Set.of("application/vnd.openxmlformats-officedocument.presentationml.presentation"))
+    );
 
     private final ClientRepository repository;
     private final ClientCommentRepository commentRepository;
     private final ClientAttachmentRepository attachmentRepository;
+    private final ProjectAccessClient projectAccessClient;
     private final Path storageDir;
 
     public ClientService(ClientRepository repository,
                          ClientCommentRepository commentRepository,
                          ClientAttachmentRepository attachmentRepository,
+                         ProjectAccessClient projectAccessClient,
                          @Value("${app.client-attachments.dir:uploads/client-attachments}") String storageDir) {
         this.repository = repository;
         this.commentRepository = commentRepository;
         this.attachmentRepository = attachmentRepository;
+        this.projectAccessClient = projectAccessClient;
         this.storageDir = Path.of(storageDir).toAbsolutePath().normalize();
         try {
             Files.createDirectories(this.storageDir);
@@ -51,7 +71,8 @@ public class ClientService {
         }
     }
 
-    public Client create(ClientCreateRequest request, String creatorEmail) {
+    public Client create(ClientCreateRequest request, String creatorEmail, String bearerToken) {
+        projectAccessClient.requireProjectAccess(request.projectId(), bearerToken);
         Client client = new Client();
         client.setProjectId(request.projectId());
         client.setName(request.name());
@@ -64,9 +85,11 @@ public class ClientService {
         return repository.save(client);
     }
 
-    public Client update(UUID id, ClientUpdateRequest request) {
-        Client client = repository.findById(id)
-                .orElseThrow(() -> new AppException("Client not found", HttpStatus.NOT_FOUND));
+    public Client update(UUID id, ClientUpdateRequest request, String bearerToken) {
+        Client client = getAuthorized(id, bearerToken);
+        if (request.projectId() != null) {
+            projectAccessClient.requireProjectAccess(request.projectId(), bearerToken);
+        }
         if (request.projectId() != null) client.setProjectId(request.projectId());
         if (request.name() != null) client.setName(request.name());
         if (request.email() != null) client.setEmail(request.email());
@@ -77,26 +100,35 @@ public class ClientService {
         return repository.save(client);
     }
 
-    public Client get(UUID id) {
+    public Client get(UUID id, String bearerToken) {
+        return getAuthorized(id, bearerToken);
+    }
+
+    private Client getAuthorized(UUID id, String bearerToken) {
+        Client client = getInternal(id);
+        projectAccessClient.requireProjectAccess(client.getProjectId(), bearerToken);
+        return client;
+    }
+
+    private Client getInternal(UUID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new AppException("Client not found", HttpStatus.NOT_FOUND));
     }
 
-    public List<Client> list(UUID projectId) {
-        return projectId == null ? repository.findAll() : repository.findByProjectId(projectId);
+    public List<Client> list(UUID projectId, String bearerToken) {
+        projectAccessClient.requireProjectAccess(projectId, bearerToken);
+        return repository.findByProjectId(projectId);
     }
 
-    public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new AppException("Client not found", HttpStatus.NOT_FOUND);
-        }
+    public void delete(UUID id, String bearerToken) {
+        getAuthorized(id, bearerToken);
         attachmentRepository.deleteByClientId(id);
         commentRepository.deleteByClientId(id);
         repository.deleteById(id);
     }
 
-    public ClientComment addComment(UUID clientId, String authorEmail, String message) {
-        get(clientId);
+    public ClientComment addComment(UUID clientId, String authorEmail, String message, String bearerToken) {
+        getAuthorized(clientId, bearerToken);
         if (message == null || message.isBlank()) {
             throw new AppException("Comment is required", HttpStatus.BAD_REQUEST);
         }
@@ -107,23 +139,23 @@ public class ClientService {
         return commentRepository.save(comment);
     }
 
-    public List<ClientComment> listComments(UUID clientId) {
-        get(clientId);
+    public List<ClientComment> listComments(UUID clientId, String bearerToken) {
+        getAuthorized(clientId, bearerToken);
         return commentRepository.findByClientIdOrderByCreatedAtAsc(clientId);
     }
 
-    public ClientAttachment uploadAttachment(UUID clientId, String uploaderEmail, MultipartFile file) {
-        get(clientId);
+    public ClientAttachment uploadAttachment(UUID clientId, String uploaderEmail, MultipartFile file, String bearerToken) {
+        getAuthorized(clientId, bearerToken);
         if (file == null || file.isEmpty()) {
             throw new AppException("File is required", HttpStatus.BAD_REQUEST);
         }
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
-            throw new AppException("File size exceeds 100 MB", HttpStatus.BAD_REQUEST);
+            throw new AppException("File size exceeds 25 MB", HttpStatus.BAD_REQUEST);
         }
 
         String originalFileName = safeFileName(file.getOriginalFilename());
         String extension = extension(originalFileName);
-        if (FORBIDDEN_EXTENSIONS.contains(extension.toLowerCase())) {
+        if (!isAllowedFileType(extension, file.getContentType())) {
             throw new AppException("This file type is not allowed", HttpStatus.BAD_REQUEST);
         }
 
@@ -146,13 +178,13 @@ public class ClientService {
         return attachmentRepository.save(attachment);
     }
 
-    public List<ClientAttachment> listAttachments(UUID clientId) {
-        get(clientId);
+    public List<ClientAttachment> listAttachments(UUID clientId, String bearerToken) {
+        getAuthorized(clientId, bearerToken);
         return attachmentRepository.findByClientIdOrderByCreatedAtAsc(clientId);
     }
 
-    public AttachmentDownload downloadAttachment(UUID clientId, UUID attachmentId) {
-        get(clientId);
+    public AttachmentDownload downloadAttachment(UUID clientId, UUID attachmentId, String bearerToken) {
+        getAuthorized(clientId, bearerToken);
         ClientAttachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new AppException("Attachment not found", HttpStatus.NOT_FOUND));
         if (!attachment.getClientId().equals(clientId)) {
@@ -172,8 +204,8 @@ public class ClientService {
         );
     }
 
-    public void deleteAttachment(UUID clientId, UUID attachmentId, String requesterEmail) {
-        get(clientId);
+    public void deleteAttachment(UUID clientId, UUID attachmentId, String requesterEmail, String bearerToken) {
+        getAuthorized(clientId, bearerToken);
         ClientAttachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new AppException("Attachment not found", HttpStatus.NOT_FOUND));
         if (!attachment.getClientId().equals(clientId)) {
@@ -213,6 +245,15 @@ public class ClientService {
             return "";
         }
         return fileName.substring(dot + 1);
+    }
+
+    private boolean isAllowedFileType(String extension, String contentType) {
+        if (extension == null || extension.isBlank() || contentType == null || contentType.isBlank()) {
+            return false;
+        }
+        Set<String> allowedContentTypes = ALLOWED_FILE_TYPES.get(extension.toLowerCase());
+        String normalizedContentType = contentType.toLowerCase().split(";")[0].trim();
+        return allowedContentTypes != null && allowedContentTypes.contains(normalizedContentType);
     }
 
     public record AttachmentDownload(Resource resource, String originalFileName, String contentType, long sizeBytes) {}

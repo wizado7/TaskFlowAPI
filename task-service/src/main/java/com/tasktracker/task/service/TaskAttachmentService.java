@@ -20,14 +20,31 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class TaskAttachmentService {
 
-    private static final long MAX_FILE_SIZE_BYTES = 100L * 1024L * 1024L;
-    private static final Set<String> FORBIDDEN_EXTENSIONS = Set.of("exe", "bat", "cmd");
+    private static final long MAX_FILE_SIZE_BYTES = 25L * 1024L * 1024L;
+    private static final Map<String, Set<String>> ALLOWED_FILE_TYPES = Map.ofEntries(
+            Map.entry("pdf", Set.of("application/pdf")),
+            Map.entry("png", Set.of("image/png")),
+            Map.entry("jpg", Set.of("image/jpeg")),
+            Map.entry("jpeg", Set.of("image/jpeg")),
+            Map.entry("gif", Set.of("image/gif")),
+            Map.entry("webp", Set.of("image/webp")),
+            Map.entry("txt", Set.of("text/plain")),
+            Map.entry("csv", Set.of("text/csv", "application/csv", "application/vnd.ms-excel")),
+            Map.entry("md", Set.of("text/markdown", "text/plain")),
+            Map.entry("doc", Set.of("application/msword")),
+            Map.entry("docx", Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document")),
+            Map.entry("xls", Set.of("application/vnd.ms-excel")),
+            Map.entry("xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+            Map.entry("ppt", Set.of("application/vnd.ms-powerpoint")),
+            Map.entry("pptx", Set.of("application/vnd.openxmlformats-officedocument.presentationml.presentation"))
+    );
 
     private final TaskAttachmentRepository repository;
     private final TaskService taskService;
@@ -56,12 +73,12 @@ public class TaskAttachmentService {
             throw new AppException("File is required", HttpStatus.BAD_REQUEST);
         }
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
-            throw new AppException("File size exceeds 100 MB", HttpStatus.BAD_REQUEST);
+            throw new AppException("File size exceeds 25 MB", HttpStatus.BAD_REQUEST);
         }
 
         String originalFileName = safeFileName(file.getOriginalFilename());
         String extension = extension(originalFileName);
-        if (FORBIDDEN_EXTENSIONS.contains(extension.toLowerCase())) {
+        if (!isAllowedFileType(extension, file.getContentType())) {
             throw new AppException("This file type is not allowed", HttpStatus.BAD_REQUEST);
         }
 
@@ -168,6 +185,15 @@ public class TaskAttachmentService {
             return "";
         }
         return fileName.substring(dot + 1);
+    }
+
+    private boolean isAllowedFileType(String extension, String contentType) {
+        if (extension == null || extension.isBlank() || contentType == null || contentType.isBlank()) {
+            return false;
+        }
+        Set<String> allowedContentTypes = ALLOWED_FILE_TYPES.get(extension.toLowerCase());
+        String normalizedContentType = contentType.toLowerCase().split(";")[0].trim();
+        return allowedContentTypes != null && allowedContentTypes.contains(normalizedContentType);
     }
 
     public record AttachmentDownload(Resource resource, String originalFileName, String contentType, long sizeBytes) {}

@@ -57,8 +57,9 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectResponse> get(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(toResponse(service.get(id)));
+    public ResponseEntity<ProjectResponse> get(@PathVariable("id") UUID id,
+                                               @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(toResponse(service.get(id, jwt.getSubject())));
     }
 
     @PutMapping("/{id}")

@@ -1,0 +1,85 @@
+global:
+  imageRegistry: registry.example.com/taskflow
+  imagePullPolicy: IfNotPresent
+  storageClassName: standard
+  allowInsecureDefaults: true
+
+config:
+  springProfilesActive: dev
+  googleRedirectUri: https://api-dev.taskflow.example.com/login/oauth2/code/google
+  frontendOauthSuccessUrl: https://app-dev.taskflow.example.com/auth/callback
+  websocketAllowedOriginPatterns: https://app-dev.taskflow.example.com,http://localhost:3000,http://localhost:5173
+  jwtExpirationMinutes: "60"
+  jwtRefreshDays: "14"
+  publicRegistrationEnabled: "true"
+  authRateLimit:
+    enabled: "true"
+    maxAttempts: "60"
+    windowSeconds: "60"
+    blockSeconds: "300"
+
+secrets:
+  create: true
+  existingSecret: ""
+  jwtSecret: replace-with-strong-secret
+  internalApiToken: replace-with-strong-internal-token
+  googleClientId: replace-me
+  googleClientSecret: replace-me
+  bootstrapAdminEmail: admin@admin.com
+  bootstrapAdminPassword: change-me
+  databasePasswords:
+    auth: auth
+    user: user
+    task: task
+    client: client
+
+ingress:
+  enabled: true
+  className: nginx
+  apiHost: api-dev.taskflow.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-dev
+  tls:
+    - secretName: taskflow-dev-api-tls
+      hosts:
+        - api-dev.taskflow.example.com
+
+networkPolicy:
+  enabled: false
+
+services:
+  apiGateway:
+    replicas: 1
+    image:
+      tag: develop
+  authService:
+    replicas: 1
+    image:
+      tag: develop
+  userService:
+    replicas: 1
+    image:
+      tag: develop
+  taskService:
+    replicas: 1
+    image:
+      tag: develop
+  clientService:
+    replicas: 1
+    image:
+      tag: develop
+
+postgresql:
+  enabled: true
+
+externalDatabases:
+  enabled: false
+
+monitoring:
+  enabled: true
+  grafana:
+    admin:
+      createSecret: true
+      existingSecret: ""
+      user: admin
+      password: admin
