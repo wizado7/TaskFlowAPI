@@ -24,7 +24,7 @@
         <springdoc.version>3.0.3</springdoc.version>
         <jjwt.version>0.11.5</jjwt.version>
         <lombok.version>1.18.46</lombok.version>
-        <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
+        <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
         <maven.surefire.plugin.version>3.5.5</maven.surefire.plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
