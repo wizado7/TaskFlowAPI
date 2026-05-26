@@ -227,23 +227,6 @@ Allowed WebSocket origins are configured with:
 WEBSOCKET_ALLOWED_ORIGIN_PATTERNS
 ```
 
-## Branching Model
-
-The repository uses three long-lived branches:
-
-| Branch | Environment | Namespace |
-| --- | --- | --- |
-| `develop` | `dev` | `taskflow-dev` |
-| `staging` | `stage` | `taskflow-stage` |
-| `main` | `prod` | `taskflow-prod` |
-
-Promotion flow:
-
-```text
-feature/*, fix/*, infra/*, dependabot/* -> develop -> staging -> main
-```
-
-See [.github/BRANCHING.md](.github/BRANCHING.md) for the full policy.
 
 ## CI/CD
 
@@ -268,51 +251,9 @@ It runs:
 
 Deployment mapping:
 
-```text
-develop -> dev
-staging -> stage
-main    -> prod
-```
 
 The deployment job uses GitHub OIDC for Yandex Cloud access. It does not require a long-lived kubeconfig secret.
 
-## GitHub Environment Configuration
-
-Create GitHub Environments:
-
-```text
-dev
-stage
-prod
-```
-
-Required environment variables:
-
-```text
-YC_CLOUD_ID
-YC_FOLDER_ID
-YC_K8S_CLUSTER_ID
-YC_K8S_ENDPOINT_FLAG
-YC_SERVICE_ACCOUNT_ID
-YC_OIDC_AUDIENCE
-YC_CLI_SHA256
-```
-
-Required environment secrets:
-
-```text
-HELM_VALUES_B64
-```
-
-`HELM_VALUES_B64` is a base64-encoded private Helm values file for the target environment.
-
-On Windows PowerShell:
-
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("helm/taskflow/values-prod.yaml"))
-```
-
-The `prod` environment should require manual approval.
 
 ## Kubernetes and Helm
 
@@ -349,26 +290,6 @@ helm upgrade --install taskflow ./helm/taskflow \
 
 See [helm/taskflow/README.md](helm/taskflow/README.md) for detailed Helm configuration.
 
-## Secrets Policy
-
-Do not commit real secrets.
-
-Allowed in git:
-
-- `.env.example`
-- `secret.example.yaml`
-- Helm `values-*.example.yaml`
-- ExternalSecret examples
-
-Ignored by git:
-
-- `.env`
-- `.env.*`
-- real Kubernetes secret manifests
-- private Helm values files
-- kubeconfig files
-
-For stage and production, use GitHub Environment Secrets, Kubernetes Secrets created by the platform, External Secrets Operator, Vault, Sealed Secrets, or an organization-managed secret manager.
 
 ## Monitoring
 
@@ -389,16 +310,3 @@ API errors use a shared response shape:
   "path": "/api/v1/..."
 }
 ```
-
-## Production Notes
-
-Before production release:
-
-- keep the repository private;
-- protect `develop`, `staging`, and `main`;
-- require pull requests and CI checks;
-- enable manual approval for `prod`;
-- use external managed PostgreSQL for stage and production;
-- store secrets outside git;
-- configure ingress, TLS, DNS, backups, monitoring, log collection, and alerting;
-- move file storage to object storage or a dedicated file service for CDN integration.
