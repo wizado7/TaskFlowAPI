@@ -1,11 +1,10 @@
 package com.tasktracker.auth.security;
 
-import com.tasktracker.auth.dto.AuthResponse;
 import com.tasktracker.auth.entity.AuthProvider;
 import com.tasktracker.auth.entity.Role;
 import com.tasktracker.auth.entity.UserAccount;
 import com.tasktracker.auth.repository.UserAccountRepository;
-import com.tasktracker.auth.service.RefreshTokenService;
+import com.tasktracker.auth.service.OAuthLoginCodeService;
 import com.tasktracker.auth.service.UserProfileProvisioner;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,25 +13,24 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 @Component
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserAccountRepository repository;
-    private final RefreshTokenService refreshTokenService;
+    private final OAuthLoginCodeService oAuthLoginCodeService;
     private final UserProfileProvisioner profileProvisioner;
     private final String frontendSuccessUrl;
 
     public OAuth2SuccessHandler(UserAccountRepository repository,
-                                RefreshTokenService refreshTokenService,
+                                OAuthLoginCodeService oAuthLoginCodeService,
                                 UserProfileProvisioner profileProvisioner,
                                 @Value("${app.frontend.oauth-success-url:http://localhost:3000/auth/callback}") String frontendSuccessUrl) {
         this.repository = repository;
-        this.refreshTokenService = refreshTokenService;
+        this.oAuthLoginCodeService = oAuthLoginCodeService;
         this.profileProvisioner = profileProvisioner;
         this.frontendSuccessUrl = frontendSuccessUrl;
     }
@@ -58,15 +56,12 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         profileProvisioner.provision(user.getEmail(), fullName);
 
-        AuthResponse authResponse = refreshTokenService.issueTokens(user);
-
-        String redirectUrl = frontendSuccessUrl
-                + "#accessToken=" + encode(authResponse.accessToken())
-                + "&refreshToken=" + encode(authResponse.refreshToken());
+        String code = oAuthLoginCodeService.createCode(user);
+        String redirectUrl = UriComponentsBuilder
+                .fromUriString(frontendSuccessUrl)
+                .queryParam("code", code)
+                .build()
+                .toUriString();
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
-    }
-
-    private String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }

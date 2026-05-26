@@ -20,6 +20,9 @@ data:
   USER_AVATARS_DIR: /data/user-avatars
   GOOGLE_REDIRECT_URI: https://api.example.com/login/oauth2/code/google
   FRONTEND_OAUTH_SUCCESS_URL: https://app.example.com/auth/callback
+  OAUTH_LOGIN_CODE_TTL_SECONDS: "300"
+  OAUTH_LOGIN_CODE_CLEANUP_DELAY_MS: "300000"
+  OAUTH_LOGIN_CODE_CLEANUP_INITIAL_DELAY_MS: "60000"
   WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: https://app.example.com
   JWT_EXP_MINUTES: "60"
   JWT_REFRESH_DAYS: "14"

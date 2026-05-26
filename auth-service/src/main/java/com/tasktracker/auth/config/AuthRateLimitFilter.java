@@ -45,7 +45,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         return !(path.equals(AUTH_PATH_PREFIX + "login")
                 || path.equals(AUTH_PATH_PREFIX + "register")
-                || path.equals(AUTH_PATH_PREFIX + "refresh"));
+                || path.equals(AUTH_PATH_PREFIX + "refresh")
+                || path.equals(AUTH_PATH_PREFIX + "oauth/exchange"));
     }
 
     @Override

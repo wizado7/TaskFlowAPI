@@ -21,6 +21,9 @@ data:
   USER_AVATARS_DIR: {{ .Values.config.userAvatarsDir | quote }}
   GOOGLE_REDIRECT_URI: {{ .Values.config.googleRedirectUri | quote }}
   FRONTEND_OAUTH_SUCCESS_URL: {{ .Values.config.frontendOauthSuccessUrl | quote }}
+  OAUTH_LOGIN_CODE_TTL_SECONDS: {{ .Values.config.oauthLoginCodeTtlSeconds | quote }}
+  OAUTH_LOGIN_CODE_CLEANUP_DELAY_MS: {{ .Values.config.oauthLoginCodeCleanupDelayMs | quote }}
+  OAUTH_LOGIN_CODE_CLEANUP_INITIAL_DELAY_MS: {{ .Values.config.oauthLoginCodeCleanupInitialDelayMs | quote }}
   WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: {{ .Values.config.websocketAllowedOriginPatterns | quote }}
   JWT_EXP_MINUTES: {{ .Values.config.jwtExpirationMinutes | quote }}
   JWT_REFRESH_DAYS: {{ .Values.config.jwtRefreshDays | quote }}

@@ -40,6 +40,10 @@ app:
     token: ${INTERNAL_API_TOKEN}
   frontend:
     oauth-success-url: ${FRONTEND_OAUTH_SUCCESS_URL:http://localhost:3000/auth/callback}
+  oauth:
+    login-code-ttl-seconds: ${OAUTH_LOGIN_CODE_TTL_SECONDS:300}
+    login-code-cleanup-delay-ms: ${OAUTH_LOGIN_CODE_CLEANUP_DELAY_MS:300000}
+    login-code-cleanup-initial-delay-ms: ${OAUTH_LOGIN_CODE_CLEANUP_INITIAL_DELAY_MS:60000}
   jwt:
     secret: ${JWT_SECRET}
     issuer: task-tracker

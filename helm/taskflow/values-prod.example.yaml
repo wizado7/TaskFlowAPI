@@ -8,6 +8,9 @@ config:
   springProfilesActive: prod
   googleRedirectUri: https://api.taskflow.example.com/login/oauth2/code/google
   frontendOauthSuccessUrl: https://app.taskflow.example.com/auth/callback
+  oauthLoginCodeTtlSeconds: "300"
+  oauthLoginCodeCleanupDelayMs: "300000"
+  oauthLoginCodeCleanupInitialDelayMs: "60000"
   websocketAllowedOriginPatterns: https://app.taskflow.example.com
   jwtExpirationMinutes: "60"
   jwtRefreshDays: "14"

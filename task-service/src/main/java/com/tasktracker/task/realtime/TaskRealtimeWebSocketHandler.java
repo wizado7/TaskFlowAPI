@@ -2,6 +2,7 @@ package com.tasktracker.task.realtime;
 
 import com.tasktracker.task.exception.AppException;
 import com.tasktracker.task.service.BoardAccessService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Component;
@@ -12,10 +13,14 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Component
 public class TaskRealtimeWebSocketHandler extends TextWebSocketHandler {
+
+    private static final String ACCESS_TOKEN_COOKIE = "tf_access_token";
 
     private final JwtDecoder jwtDecoder;
     private final BoardAccessService accessService;
@@ -38,7 +43,7 @@ public class TaskRealtimeWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
             MultiValueMap<String, String> params = UriComponentsBuilder.fromUri(uri).build().getQueryParams();
-            String token = params.getFirst("token");
+            String token = resolveToken(session);
             UUID projectId = parseUuid(params.getFirst("projectId"));
             UUID boardId = parseUuid(params.getFirst("boardId"));
             if (token == null || token.isBlank() || (projectId == null && boardId == null)) {
@@ -78,5 +83,20 @@ public class TaskRealtimeWebSocketHandler extends TextWebSocketHandler {
         } catch (IllegalArgumentException exception) {
             throw new AppException("Invalid realtime subscription id", HttpStatus.BAD_REQUEST);
         }
+    }
+
+    private String resolveToken(WebSocketSession session) {
+        String cookieHeader = session.getHandshakeHeaders().getFirst(HttpHeaders.COOKIE);
+        if (cookieHeader == null || cookieHeader.isBlank()) {
+            return null;
+        }
+
+        for (String cookie : cookieHeader.split(";")) {
+            String[] parts = cookie.trim().split("=", 2);
+            if (parts.length == 2 && ACCESS_TOKEN_COOKIE.equals(parts[0])) {
+                return URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 }

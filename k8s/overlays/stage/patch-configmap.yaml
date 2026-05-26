@@ -14,4 +14,7 @@ data:
   CLIENT_DB_USER: client
   GOOGLE_REDIRECT_URI: https://api-stage.example.com/login/oauth2/code/google
   FRONTEND_OAUTH_SUCCESS_URL: https://app-stage.example.com/auth/callback
+  OAUTH_LOGIN_CODE_TTL_SECONDS: "300"
+  OAUTH_LOGIN_CODE_CLEANUP_DELAY_MS: "300000"
+  OAUTH_LOGIN_CODE_CLEANUP_INITIAL_DELAY_MS: "60000"
   WEBSOCKET_ALLOWED_ORIGIN_PATTERNS: https://app-stage.example.com

@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.Map;
 
 @Service
@@ -32,6 +33,23 @@ public class UserProfileProvisioner {
     }
 
     public void provision(String email, String fullName) {
+        tryProvision(email, fullName);
+    }
+
+    public void provisionWithRetry(String email, String fullName) {
+        int maxAttempts = 8;
+        Duration delay = Duration.ofSeconds(2);
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (tryProvision(email, fullName)) {
+                return;
+            }
+            if (attempt < maxAttempts) {
+                sleep(delay);
+            }
+        }
+    }
+
+    private boolean tryProvision(String email, String fullName) {
         try {
             String url = userServiceUrl + "/api/v1/internal/users/provision";
             Map<String, String> body = fullName == null || fullName.isBlank()
@@ -40,8 +58,18 @@ public class UserProfileProvisioner {
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Internal-Token", internalToken);
             restTemplate.postForEntity(url, new HttpEntity<>(body, headers), Void.class);
+            return true;
         } catch (Exception ex) {
             log.warn("Failed to provision user profile for {}: {}", email, ex.getMessage());
+            return false;
+        }
+    }
+
+    private void sleep(Duration delay) {
+        try {
+            Thread.sleep(delay.toMillis());
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
         }
     }
 }

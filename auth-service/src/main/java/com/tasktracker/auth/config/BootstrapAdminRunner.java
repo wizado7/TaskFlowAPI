@@ -51,7 +51,7 @@ public class BootstrapAdminRunner implements ApplicationRunner {
             user.getRoles().add(Role.ADMIN);
             user.getRoles().add(Role.USER);
             repository.save(user);
-            profileProvisioner.provision(user.getEmail());
+            profileProvisioner.provisionWithRetry(user.getEmail(), null);
             log.info("Bootstrap admin: granted ADMIN role to existing user {}", adminEmail);
             return;
         }
@@ -63,7 +63,7 @@ public class BootstrapAdminRunner implements ApplicationRunner {
         admin.setBlocked(false);
         admin.setRoles(EnumSet.of(Role.ADMIN, Role.USER));
         repository.save(admin);
-        profileProvisioner.provision(admin.getEmail());
+        profileProvisioner.provisionWithRetry(admin.getEmail(), null);
         log.info("Bootstrap admin: created admin user {}", adminEmail);
     }
 }
